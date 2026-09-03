@@ -1,0 +1,71 @@
+;(Equipment:SINUMERIK-ONE-G300)
+;(Founder:BalagurovAI)
+;( 2026/09/03 11:39 /1)
+;(NC name:PROGRAM)
+;(Machine time: 0.0 MIN)
+;(Total Tool:1)
+;(T;D16-54-100L-T3=MILL D=16.0000 DR_angle=0.0000 H1 D00)
+;;                                                                                               
+;(PC:SPBNB111529)
+;(D:\ÀŒÃŒ\model_·Ó·˚¯Í‡_ÚËÚ‡Ì_2.prt)
+N10 ;(LOMO-REPO-tcl)
+N20 ;(Start of Program)
+N30 ;
+N40 DEF REAL _camtolerance
+N50 DEF REAL _F_CUTTING, _F_ENGAGE, _F_RETRACT
+N60 ;
+N70 G40 G17 G710 G94 G90 G60 G601 FNORM
+N80 TRAFOOF
+N90 CYCLE800()
+N100 SUPA G0 Z0.0 D0
+N110 SUPA X0.0
+N120 SUPA Y0.0
+N130 SUPA A0.0 C0.0
+N140 ;(start of Path)
+N150 _camtolerance=.06
+N160 ; 
+N170 ;(BOSS_MILLING)
+N180 ; 
+N190 ;(First Tool)
+N200 M1
+N210 T3 D1
+N220 M6
+N230 SUPA X0.0
+N240 SUPA Y-400. ;(First reference point)
+N250 ;(Initial Move)
+N260 M8
+N270 S2984 M3
+N280 G54
+N290 G0 A0.0 C=DC(0.0)
+N300 COMPOF
+N310 CYCLE832(_camtolerance,_FINISH,1)
+N320 ;Œ—» «¿¡ÀŒ »–Œ¬¿Õ€. 3 Œ—≈¬Œ≈ ‘–≈«≈–Œ¬¿Õ»≈
+N330 TRAFOOF
+N340 ;—Œ∆ ¬ À.
+N350 M8
+N360 G0 X14.92 Y14.92 Z10. D1
+N370 #DBGMOT n=1 t=APPROACH p=,,
+N380 ;Approach Move
+N390 Z-29.5408
+N400 #DBGMOT n=2 t=ENGAGE p=,,
+N410 ;Engage Move
+N420 G2 X18. Y0.0 Z-29.8 I-34.5966 J-14.92 TURN=0 F597.
+N430 ;Cutting
+N440 #DBGARC dir=CLW cx=0.0 cy=0.0 cz=-29.799999999999997 end=18.0,4.4100000000000003e-15,-29.799999999999997 r=18.0
+N450 X18. Y0.0 I-18. J0.0
+N460 #DBGMOT n=3 t=RETRACT p=,,
+N470 ;Retract Move
+N480 X14.92 Y-14.92 Z-29.5408 I-37.6766 J0.0 TURN=0
+N490 ;Departure Move
+N500 G0 Z10.
+N510 CYCLE832()
+N520 SUPA G0 Z0.0
+N530 ;(End of Path)
+N540 M9
+N550 M5
+N560 SUPA G0 Z0.0 D0
+N570 SUPA X0.0
+N580 SUPA Y0.0
+N590 SUPA A0.0 C0.0
+N600 M30
+;(End of Program)

@@ -608,6 +608,25 @@ proc MOM_before_motion { } {
 
    FEEDRATE_SET
 
+   # ---- TEMP diagnostic: mark ENGAGE/APPROACH/RETRACT linear segments ----
+   global pb_dbg_seq
+   if { ![info exists pb_dbg_seq] } { set pb_dbg_seq 0 }
+   set mt ""
+   if { [info exists mom_motion_type] } { set mt $mom_motion_type }
+   if { $mt == "ENGAGE" || $mt == "APPROACH" || $mt == "RETRACT" } {
+      incr pb_dbg_seq
+      if { $pb_dbg_seq <= 80 } {
+         set px ""
+         if { [info exists mom_mcs_goto(0)] } { set px $mom_mcs_goto(0) } else { if {[info exists mom_pos(0)]} { set px $mom_pos(0) } }
+         set py ""
+         if { [info exists mom_mcs_goto(1)] } { set py $mom_mcs_goto(1) } else { if {[info exists mom_pos(1)]} { set py $mom_pos(1) } }
+         set pz ""
+         if { [info exists mom_mcs_goto(2)] } { set pz $mom_mcs_goto(2) } else { if {[info exists mom_pos(2)]} { set pz $mom_pos(2) } }
+         MOM_output_literal "#DBGMOT n=$pb_dbg_seq t=$mt p=$px,$py,$pz"
+      }
+   }
+
+
    switch $mom_motion_type {
       ENGAGE   { PB_engage_move }
       APPROACH { PB_approach_move }
@@ -1251,6 +1270,21 @@ proc MOM_circular_move { } {
 
    if { [PB_CMD__rotc_arc_handle] } {
       return
+   }
+
+   global mom_arc_direction mom_pos_arc_center mom_pos mom_pos_arc_start mom_mcs_goto mom_arc_radius
+   global pb_diag_arc
+   set pb_diag_arc 1
+   if { $pb_diag_arc == 1 } {
+      set _cx [expr $mom_pos_arc_center(0)]
+      set _cy [expr $mom_pos_arc_center(1)]
+      set _cz [expr $mom_pos_arc_center(2)]
+      set _jx [expr $mom_mcs_goto(0)]
+      set _jy [expr $mom_mcs_goto(1)]
+      set _jz [expr $mom_mcs_goto(2)]
+      set _dr -1
+      if { [info exists mom_arc_direction] } { set _dr "$mom_arc_direction" }
+      MOM_output_literal "#DBGARC dir=$_dr cx=$_cx cy=$_cy cz=$_cz end=$_jx,$_jy,$_jz r=[expr $mom_arc_radius]"
    }
 
    CIRCLE_SET
@@ -2194,6 +2228,8 @@ proc MOM_spindle_off { } {
 
 #=============================================================
 proc MOM_start_of_path { } {
+
+   MOM_output_literal ";(LOMO-REPO-tcl)"
 #=============================================================
   global mom_sys_in_operation
    set mom_sys_in_operation 1
