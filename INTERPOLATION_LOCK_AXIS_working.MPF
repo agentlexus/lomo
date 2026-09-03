@@ -1,0 +1,69 @@
+;(Equipment:SINUMERIK-ONE-G300)
+;(Founder:BalagurovAI)
+;( 2026/09/01 16:43 /1)
+;(NC name:PROGRAM)
+;(Machine time: 0.0 MIN)
+;(Total Tool:1)
+;(T;MILL_D16_T3=MILL D=16.0000 DR_angle=0.0000 H1 D00)
+;;                                                                                               
+;(PC:SPBNB111529)
+;(D:\ÀŒÃŒ\model_·Ó·˚¯Í‡_ÚËÚ‡Ì_2.prt)
+N10 ;(Start of Program)
+N20 ;
+N30 DEF REAL _camtolerance
+N40 DEF REAL _F_CUTTING, _F_ENGAGE, _F_RETRACT
+N50 ;
+N60 G40 G17 G710 G94 G90 G60 G601 FNORM
+N70 TRAFOOF
+N80 CYCLE800()
+N90 SUPA G0 Z0.0 D0
+N100 SUPA X0.0
+N110 SUPA Y0.0
+N120 SUPA A0.0
+N130 ;(start of Path)
+R1=1.000
+N140 _camtolerance=0.002
+N150 ; 
+N160 ;(BOSS_MILLING)
+N170 ; 
+N180 ;(First Tool)
+N190 M1
+N200 T3 D1
+N210 M6
+N220 SUPA X0.0
+N230 SUPA Y-400. ;(First reference point)
+N240 ;(Initial Move)
+N260 S2984 M3
+N270 G54
+N280 G0 A0.0 C=DC(0.0)
+N290 COMPOF
+N300 CYCLE832(_camtolerance,_FINISH,1)
+N310 ;Œ—» «¿¡ÀŒ »–Œ¬¿Õ€. 3 Œ—≈¬Œ≈ ‘–≈«≈–Œ¬¿Õ»≈
+N320 TRAFOOF
+N330 ;—Œ∆ ¬ À.
+N340 M8
+ASCALE X=R1 Y=R1
+N350 G0 X14.92 Y14.92 Z10. D1
+N360 ;Approach Move
+N370 Z-29.2408
+N380 ;Engage Move
+M52
+N390 G2 X18. Y0.0 Z-29.5 I-34.5966 J-14.92 TURN=0 F597.
+N400 ;Cutting
+G1 G91 C-360.1 F200
+N420 ;Retract Move
+N422 G90
+N430 G2 X14.92 Y-14.92 Z-29.2408 I-37.6766 J0.0 TURN=0 F600
+N440 ;Departure Move
+N450 G0 Z10.
+N460 CYCLE832()
+N470 SUPA G0 Z0.0
+N480 ;(End of Path)
+N490 M9
+N500 M5
+N510 SUPA G0 Z0.0 D0
+N520 SUPA X0.0
+N530 SUPA Y0.0
+N540 SUPA A0.0
+N550 M30
+;(End of Program)
