@@ -1123,37 +1123,35 @@ proc PB_CMD__rotc_arc_handle { } {
      return 0
   }
 
-  global mom_pos_arc_center mom_arc_radius mom_arc_direction
-  global mom_mcs_goto mom_out_angle_pos mom_pos mom_tool_axis
+  global mom_pos_arc_center mom_arc_radius
   global pb_ra_active pb_ra_radius
 
   set cx [expr $mom_pos_arc_center(0)]
   set cy [expr $mom_pos_arc_center(1)]
   set tol 0.5
 
+  if { ![info exists pb_ra_active] } { set pb_ra_active 0 }
+
   if { [expr abs($cx)] < $tol && [expr abs($cy)] < $tol } {
-     # Working arc whose center is on C axis (0,0) -> convert to C rotation
-     if { ![info exists pb_ra_active] } { set pb_ra_active 0 }
+     # Working arc whose center is on the C axis (0,0): the whole circle is the
+     # rotary-table pass. Output the single C rotation once on its first arc and
+     # swallow all remaining arcs of the circle.
      if { $pb_ra_active == 0 } {
         set pb_ra_active 1
         set pb_ra_radius $mom_arc_radius
-        set mom_mcs_goto(0) $mom_arc_radius
-        set mom_mcs_goto(1) 0.0
-        set mom_mcs_goto(2) $mom_pos(2)
-        set mom_out_angle_pos(0) 0.0
-        set mom_out_angle_pos(1) 0.0
-        MOM_force Once fifth_axis
-        MOM_do_template linear_move_rotary
+        MOM_output_literal "G1 G91 C-360.1 F200"
      }
      return 1
   }
 
-  # Arc with a different center (approach / retract): not converted.
-  if { [info exists pb_ra_active] && $pb_ra_active == 1 } {
-     # A complete working-circle pass has just ended -> output full turn incrementally
-     MOM_output_literal "G91"
-     MOM_output_literal "C-360"
+  # Arc with a different center (engage approach / retract departure).
+  # A just-finished working circle must be closed with G90 before the
+  # departure arc is output (incremental C is still active). The literal
+  # G1 block above does not update the post motion-G state, so force
+  # G2/G3 so the retract arc starts with a circular code.
+  if { $pb_ra_active == 1 } {
      MOM_output_literal "G90"
+     MOM_force Once G_motion
      set pb_ra_active 0
   }
   return 0
@@ -1291,8 +1289,8 @@ proc MOM_coolant_off { } {
 #=============================================================
 proc MOM_coolant_on { } {
 #=============================================================
-   # M8 выводится в Initial Move через PB_CMD_output_coolant_spindle,
-   # поэтому событие Coolant On при первом движении не дублируем.
+   # M8 is already output in Initial Move via PB_CMD_output_coolant_spindle,
+   # so the Coolant On event is not duplicated at the first motion.
    return
 }
 
@@ -1634,8 +1632,8 @@ proc MOM_end_of_path { } {
    global mom_sys_in_operation
    set mom_sys_in_operation 0
 
-   # ���������� ����� ���������� ������������, ����� �� �� ����������
-   # �� ����������� �������� ��� ������ UDE Lock Axis.
+   # Reset the interpolation-lock mode so it does not affect
+   # subsequent operations without an explicit UDE Lock Axis.
    catch {unset mom_ude_interpolation_lock}
 }
 
@@ -2545,9 +2543,9 @@ proc PB_auto_tool_change { } {
    global mom_tool_number mom_next_tool_number
    global mom_sys_first_tool_handled
 
-   # После первой смены (MOM_first_tool → PB_CMD_output_first_tool)
-   # Post Builder дополнительно вызывает MOM_tool_change.
-   # Если первый инструмент уже полностью выведен, пропускаем повтор.
+   # After the first change (MOM_first_tool -> PB_CMD_output_first_tool)
+   # Post Builder additionally calls MOM_tool_change.
+   # If the first tool was already fully output, skip the repeat.
    if {[info exists mom_sys_first_tool_handled] && $mom_sys_first_tool_handled == 1} {
       set mom_sys_first_tool_handled 0
       return
@@ -2849,11 +2847,11 @@ proc PB_CMD_MOM_insert { } {
 #=============================================================
 proc PB_CMD_MOM_interpolation_lock { } {
 #=============================================================
-# Блокировка интерполяции (Interpolation Lock) — UDE.
-# При активации (mom_ude_interpolation_lock == "Yes") обработка идёт
-# в 4-осевом режиме: вращение стола C с включённым TRAORI (RTCP).
-# Ось A остаётся заблокированной, ось C разблокируется (M52).
-# Применяется к planar операциям (например, расфрезеровка вращением стола).
+# Interpolation lock (Interpolation Lock) - UDE.
+# When active (mom_ude_interpolation_lock == "Yes") machining runs
+# in 4-axis mode: table rotation C with TRAFOOF (no RTCP).
+# Axis A stays locked, axis C is unlocked (M52).
+# Applied to planar operations (e.g. circular milling by table rotation).
    global mom_ude_interpolation_lock
 }
 
@@ -2861,21 +2859,21 @@ proc PB_CMD_MOM_interpolation_lock { } {
 #=============================================================
 proc PB_CMD_MOM_lock_axis { } {
 #=============================================================
-# ������� UDE Lock Axis ���������� ��� ���� �����.
-# ��� ��������� ���������� ����� "���������� ������������":
-# �������� XYZ-������������ �����������, ��������� ������
-# ��������� ����� C (4-������ �����).
-#   - ��� A ������� ��������������� (M50 �� ���������)
-#   - ��� C �������������� (M52) + ������� TRAORI (RTCP)
-#   - ���� �������������, �������� ��� ����� ������� �����
-#     (����. �������� �������������).
+# Stock UDE Lock Axis reworked for our needs.
+# When active, the "interpolation lock" mode is turned on:
+# linear XYZ interpolation is disabled, machining goes
+# through rotating table C (4-axis mode).
+#   - Axis A stays locked (M50 not output)
+#   - Axis C is unlocked (M52), TRAFOOF (no RTCP)
+#   - Circular arcs are kept as G2/G3; the working circle is
+#     converted by PB_CMD__rotc_arc_handle to a C-axis rotation.
 #
    global mom_ude_interpolation_lock
 
-   # �������� ����� ���������� ������������.
-   # �� ��� ���������� ��� ��������� PB_CMD_detect_operation_type
-   # (TRAORI, ������������ ���) � PB_CMD_m50_m52_unlock (M52 +
-   # ����������� � ����������). ����������� ������ �� �����.
+   # Enable the interpolation-lock mode.
+   # PB_CMD_detect_operation_type (TRAFOOF, arc handling) and
+   # PB_CMD_m50_m52_unlock (M52 + lock comment) already react
+   # to this variable. No need to duplicate the logic.
    set mom_ude_interpolation_lock "Yes"
 }
 
@@ -5643,9 +5641,9 @@ proc PB_CMD_config_cycle_start { } {
 #=============================================================
 proc PB_CMD_coolant_on { } {
 #=============================================================
-# Обёртка события Coolant On. Если M8 уже выведен в Initial Move
-# через PB_CMD_output_coolant_spindle, не выводим повторно
-# (иначе M8 продублируется при первом движении).
+# Wrapper for the Coolant On event. If M8 was already output in Initial Move
+# via PB_CMD_output_coolant_spindle, do not output it again
+# (otherwise M8 would be duplicated at the first motion).
   global mom_coolant_mode
   global mom_sys_coolant_pre_output
 
@@ -5821,14 +5819,14 @@ return
       if [info exists tool_data_buffer($tool,output)] {
          set tool_line $tool_data_buffer($tool,output)
 
-         # Парсим все поля инструмента
-         # Формат: НОМЕР  НАЗВАНИЕ  ДИАМЕТР  COR_RAD  FLUTE_LEN  ADJ_REG
+         # Parse all tool fields
+         # Format: NUMBER  NAME  DIAMETER  COR_RAD  FLUTE_LEN  ADJ_REG
          if { [regexp {^([^\s]+)\s+([^\s]+)\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)} $tool_line match number name dia rad flute adj] } {
             incr tool_count
             if { $tool_list_output != "" } {
                append tool_list_output "\n"
             }
-            # Формат как в вашем примере
+            # Format as in your example
             append tool_list_output ";(T${number}=${name} D=${dia} DR_angle=${rad} H${adj} D00)"
          }
       }
@@ -5836,12 +5834,12 @@ return
       set prev_tool_type $tool_type
    }
 
-   # Выводим общее количество инструментов
+   # Output the total number of tools
    if { $tool_count > 0 } {
       shop_doc_output_literal ";(Total Tool:${tool_count})"
    }
 
-   # Выводим список инструментов
+   # Output the tool list
    if { $tool_list_output != "" } {
       shop_doc_output_literal $tool_list_output
    }
@@ -6375,14 +6373,16 @@ proc PB_CMD_detect_operation_type { } {
     }
   }
 
-  # Блокировка интерполяции (UDE interpolation_lock): 4-осевая обработка
-  # вращением стола C с включённым TRAORI (RTCP). Ось A заблокирована,
-  # ось C разблокирована (см. PB_CMD_m50_m52_unlock).
+  # Interpolation-lock (UDE interpolation_lock): 4-axis machining by rotating
+  # table C with TRAFOOF (no RTCP). Axis A stays locked, axis C is unlocked
+  # (see PB_CMD_m50_m52_unlock).
   global mom_ude_interpolation_lock mom_siemens_ori_def
   if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
      set dpp_ge(toolpath_axis_num) 5
-     set mom_siemens_5axis_mode "TRAORI"
-     set mom_siemens_ori_def "ROTARY AXES" ; # вращение стола -> углы осей (C), не вектор
+     # Interpolation-lock runs with TRAFOOF (no RTCP): table rotates,
+     # tool stays stationary on the boss side.
+     set mom_siemens_5axis_mode "TRAFOOF"
+     set mom_siemens_ori_def "ROTARY AXES" ; # table rotation -> axis angles (C), not vector
    global pb_ra_active pb_rts_active
    set pb_ra_active 0
    set pb_rts_active 0
@@ -6393,7 +6393,11 @@ proc PB_CMD_detect_operation_type { } {
   if { $mom_siemens_milling_setting == "Default"} {
      if {$dpp_ge(toolpath_axis_num)==5} {
        # set 5-axis simultaneous operation type
-        set mom_siemens_5axis_mode "TRAORI"
+        if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+           set mom_siemens_5axis_mode "TRAFOOF"
+        } else {
+           set mom_siemens_5axis_mode "TRAORI"
+        }
    } else {
         set mom_siemens_5axis_mode $dpp_coord_rotation_output_type
      }
@@ -6443,8 +6447,15 @@ proc PB_CMD_detect_operation_type { } {
         set save_mom_kin_arc_output_mode $mom_kin_arc_output_mode
         set save_mom_kin_helical_arc_output_mode $mom_kin_helical_arc_output_mode
      }
-     set mom_kin_arc_output_mode "LINEAR"
-     set mom_kin_helical_arc_output_mode "LINEAR"
+     if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+        # Interpolation-lock: keep circular moves so the approach/retract arcs
+        # are output as G2/G3 (the working circle is caught by PB_CMD__rotc_arc_handle).
+        set mom_kin_arc_output_mode "FULL_CIRCLE"
+        set mom_kin_helical_arc_output_mode "FULL_CIRCLE"
+     } else {
+        set mom_kin_arc_output_mode "LINEAR"
+        set mom_kin_helical_arc_output_mode "LINEAR"
+     }
      MOM_reload_kinematics
   } else {
      # <2017-02-20 szl> check if there is a UDE attached in operation
@@ -8770,26 +8781,26 @@ proc PB_CMD_linear_move { } {
 #=============================================================
 proc PB_CMD_m50_m52_unlock { } {
 #=============================================================
-# Разблокировка осей (M50/M52) для непрерывной 5-осевой обработки.
-# Логика определения 5-осевой операции вынесена в стандартную
-# функцию PB_CMD_detect_5axis_tool_path (использует mom_operation_type,
-# mom_tool_axis_type и mom_tool_path_type).
+# Unlocking axes (M50/M52) for continuous 5-axis machining.
+# 5-axis operation detection lives in the standard
+# function PB_CMD_detect_5axis_tool_path (uses mom_operation_type,
+# mom_tool_axis_type and mom_tool_path_type).
 #
-# Отдельный режим: "Блокировка интерполяции" (UDE interpolation_lock).
-# При его активации обрабатываем в 4-осевом режиме (вращение стола C
-# с включённым TRAORI): ось A заблокирована, ось C разблокирована (M52).
+# Separate mode: "Interpolation lock" (UDE interpolation_lock).
+# When active, machining runs in 4-axis mode (table rotation C
+# with TRAFOOF, no RTCP): axis A stays locked, axis C unlocked (M52).
 if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
-    # 4-осевая обработка: вращение стола C, ось A заблокирована
+    # 4-axis machining: table rotation C, axis A locked
     MOM_output_literal "M52 ;(C-axis loose)"
-    MOM_output_literal ";БЛОКИРОВКА ИНТЕРПОЛЯЦИИ. 4 ОСЕВАЯ ОБРАБОТКА (ВРАЩЕНИЕ СТОЛА C)."
+    MOM_output_literal ";INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C ROTATION)."
 } elseif { [PB_CMD_detect_5axis_tool_path] } {
-    # Непрерывная 5-осевая обработка
+    # Continuous 5-axis machining
     MOM_output_literal "M50 ;(A-axis loose)"
     MOM_output_literal "M52 ;(C-axis loose)"
-    MOM_output_literal ";ОСИ РАЗБЛОКИРОВАНЫ. НЕПРЕРЫВНАЯ 5 ОСЕВАЯ ОБРАБОТКА ВКЛ."
+    MOM_output_literal ";AXES UNLOCKED. CONTINUOUS 5-AXIS MACHINING ON."
 } else {
-    # 3-осевая или 3+2 обработка
-    MOM_output_literal ";ОСИ ЗАБЛОКИРОВАНЫ. 3 ОСЕВОЕ ФРЕЗЕРОВАНИЕ"
+    # 3-axis or 3+2 machining
+    MOM_output_literal ";AXES LOCKED. 3-AXIS MILLING"
 }
 }
 
@@ -8799,7 +8810,7 @@ proc PB_CMD_move_force_addresses { } {
 #=============================================================
   MOM_force once G_motion X Y
   MOM_force once G_motion Z D
-  MOM_output_literal ";СОЖ ВКЛ."
+  MOM_output_literal ";COOLANT ON."
   MOM_output_literal "M8"
 }
 
@@ -9024,15 +9035,15 @@ return
 #=============================================================
 proc PB_CMD_output_coolant_spindle { } {
 #=============================================================
-# Включение СОЖ (M8) и шпинделя (S... M3/M4) отдельными кадрами
-# до привязки G54 и CYCLE800, как в эталонной УП 2.mpf:
+# Coolant (M8) and spindle (S... M3/M4) are switched on in separate blocks
+# before the G54 datum and CYCLE800, as in the reference program 2.mpf:
 #     M8
 #     S1500 M3
 #     G54
 #     TRAFOOF
 #     CYCLE800(...)
-# Адреса выводятся через шаблоны без force, поэтому события
-# Coolant On / Spindle RPM при первом движении не продублируют их.
+# Addresses are output through templates without force, so the
+# Coolant On / Spindle RPM events do not duplicate them at the first motion.
   global mom_coolant_mode mom_spindle_speed mom_spindle_direction
   global mom_sys_coolant_pre_output
 
@@ -9050,26 +9061,26 @@ proc PB_CMD_output_coolant_spindle { } {
 #=============================================================
 proc PB_CMD_output_end_of_path { } {
 #=============================================================
-# Логика конца пути в порядке эталонной УП 2.mpf:
-#     TRAFOOF            ;(только если была TRAORI / 5-осевая)
+# End-of-path logic in the order of the reference program 2.mpf:
+#     TRAFOOF            ;(only if TRAORI / 5-axis was active)
 #     CYCLE832()
 #     SUPA G00 Z0.0
 #     ;(End of Path)
-# Возврат X/Y/A/C и выключение шпинделя/СОЖ делает Tool Change
-# (M9/M5 + SUPA Z0.0 D0/X0.0/Y0.0) и PB_CMD_output_end_of_program.
+# Returning X/Y/A/C and switching spindle/coolant off is done by Tool Change
+# (M9/M5 + SUPA Z0.0 D0/X0.0/Y0.0) and PB_CMD_output_end_of_program.
   global mom_sys_in_operation
 
-   # Сброс 5-осевой трансформации (только если был включён TRAORI)
+   # Reset 5-axis transformation (only if TRAORI was active)
    if { [PB_CMD__check_block_reset_traori] } {
       MOM_do_template trafoof
    }
 
-   # Выключение CYCLE832
+   # Switch CYCLE832 off
    if { [PB_CMD__check_block_reset_cycle832] } {
       MOM_do_template reset_cycle832
    }
 
-   # SUPA G00 Z0.0 (без D0)
+   # SUPA G00 Z0.0 (without D0)
    if { [PB_CMD__check_block_return_to_reference_point] } {
       MOM_suppress Once D
       MOM_force Once Text G_motion
@@ -9088,8 +9099,8 @@ proc PB_CMD_output_end_of_path { } {
 #=============================================================
 proc PB_CMD_output_end_of_program { } {
 #=============================================================
-# Выключение шпинделя/СОЖ и возврат домой в конце программы,
-# в порядке эталонной УП 2.mpf:
+# Spindle/coolant off and return home at the end of the program,
+# in the order of the reference program 2.mpf:
 #     M9
 #     M5
 #     SUPA G00 Z0.0 D0
@@ -9241,12 +9252,12 @@ return
 #=============================================================
 proc PB_CMD_output_first_tool { } {
 #=============================================================
-# Логика первой смены инструмента в порядке эталонной УП 2.mpf:
+# First tool change logic in the order of the reference program 2.mpf:
 #     ;(First Tool)
 #     M1
 #     T7 D1
 #     M6
-#     T1                 ;(preselect следующего инструмента)
+#     T1                 ;(preselect the next tool)
 #     SUPA G00 X0.0
 #     SUPA G00 Y-400.0 ;(First reference point)
    MOM_output_literal ";(First Tool)"
@@ -9273,14 +9284,14 @@ proc PB_CMD_output_first_tool { } {
 #=============================================================
 proc PB_CMD_output_initial_move { } {
 #=============================================================
-# Начальное движение операции в порядке эталонной УП 2.mpf:
+# Operation initial move in the order of the reference program 2.mpf:
 #     ;(Initial Move)
 #     M8
 #     S1500 M3
 #     G54
 #     TRAFOOF
 #     CYCLE800(...)
-# Вызывается из события Initial Move.
+# Called from the Initial Move event.
   global mom_programmed_feed_rate
 
    MOM_do_template g17
@@ -9386,7 +9397,7 @@ return
 #=============================================================
 proc PB_CMD_output_operation_comment { } {
 #=============================================================
-# Комментарий операции в формате эталона: ;(D15-KC)
+# Operation comment in reference format: ;(D15-KC)
   global mom_operation_name
    MOM_output_literal ";($mom_operation_name)"
 }
@@ -9395,24 +9406,24 @@ proc PB_CMD_output_operation_comment { } {
 #=============================================================
 proc PB_CMD_output_program_footer { } {
 #=============================================================
-# DNC-заголовок эталона (нижняя часть): PC и пути к файлам.
+# Reference DNC header (lower part): PC and file paths.
 #     ;(PC:SPBNB111529)
 #     ;(D:\...\*.prt)
 #     ;(D:\...\*.mpf)
   global mom_part_name mom_dnc_program_name
   global env
 
-   # PC (имя компьютера)
+   # PC (computer name)
    if {[info exists env(COMPUTERNAME)] && $env(COMPUTERNAME) != ""} {
       MOM_output_literal ";(PC:$env(COMPUTERNAME))"
    }
 
-   # Путь к детали (mom_part_name уже содержит полный путь с диском)
+   # Part path (mom_part_name already holds the full path including drive)
    if {[info exists mom_part_name] && $mom_part_name != ""} {
       MOM_output_literal ";($mom_part_name)"
    }
 
-   # Путь к выходному NC
+   # Path to the output NC
    if {[info exists mom_dnc_program_name] && $mom_dnc_program_name != ""} {
       MOM_output_literal ";($mom_dnc_program_name)"
    }
@@ -9422,18 +9433,18 @@ proc PB_CMD_output_program_footer { } {
 #=============================================================
 proc PB_CMD_output_program_header { } {
 #=============================================================
-# DNC-заголовок в формате эталонной УП 2.mpf (верхняя часть):
+# Reference DNC header format (upper part):
 #     ;(Equipment:SINUMERIK-ONE-G300)
 #     ;(Founder:BalagurovAI)
 #     ;(2026/08/26 16:03 /3)
 #     ;(NC name:2.nc)
 #     ;(Machine time: 0.25 MIN)
-# Total Tool и список инструментов формируются PB_CMD_creat_tool_list_2,
-# а PC и пути к файлам — PB_CMD_output_program_footer.
+# Total Tool and the tool list are built by PB_CMD_creat_tool_list_2,
+# while PC and file paths are output by PB_CMD_output_program_footer.
   global mom_dnc_machine_name mom_dnc_user_name
   global mom_logname mom_date mom_machine_time mom_dnc_program_name mom_oper_program
 
-   # Equipment (стойка/станок) — берём из DNC-настроек, иначе ставим дефолт
+   # Equipment (controller/machine) - taken from DNC settings, otherwise default
    if {[info exists mom_dnc_machine_name] && $mom_dnc_machine_name != ""} {
       set equip $mom_dnc_machine_name
    } else {
@@ -9441,7 +9452,7 @@ proc PB_CMD_output_program_header { } {
    }
    MOM_output_literal ";(Equipment:$equip)"
 
-   # Founder (автор УП)
+   # Founder (NC program author)
    if {[info exists mom_dnc_user_name] && $mom_dnc_user_name != ""} {
       set founder $mom_dnc_user_name
    } elseif {[info exists mom_logname] && $mom_logname != ""} {
@@ -9451,13 +9462,13 @@ proc PB_CMD_output_program_header { } {
    }
    MOM_output_literal ";(Founder:$founder)"
 
-   # Дата и время в формате эталона: ;(2026/08/28 09:57 /5)
+   # Date and time in the reference format: ;(2026/08/28 09:57 /5)
    if {[info exists mom_date] && $mom_date != ""} {
       set fmtdt [clock format [clock scan $mom_date] -format "%Y/%m/%d %H:%M"]
       MOM_output_literal ";( $fmtdt /1)"
    }
 
-   # NC name (имя выходного NC-файла)
+   # NC name (output NC file name)
    set ncname ""
    if {[info exists mom_dnc_program_name] && $mom_dnc_program_name != ""} {
       set ncname [file tail $mom_dnc_program_name]
@@ -9466,7 +9477,7 @@ proc PB_CMD_output_program_header { } {
    }
    MOM_output_literal ";(NC name:$ncname)"
 
-   # Machine time (минуты, один знак)
+   # Machine time (minutes, one digit)
    if {[info exists mom_machine_time] && $mom_machine_time != ""} {
       set mtime [format "%.1f" $mom_machine_time]
       MOM_output_literal ";(Machine time: $mtime MIN)"
@@ -9477,7 +9488,7 @@ proc PB_CMD_output_program_header { } {
 #=============================================================
 proc PB_CMD_output_start_of_path { } {
 #=============================================================
-# Логика начала пути в порядке эталонной УП 2.mpf:
+# Program start logic in the order of the reference program 2.mpf:
 #     G40...
 #     TRAFOOF
 #     CYCLE800()
@@ -9490,8 +9501,8 @@ proc PB_CMD_output_start_of_path { } {
    PB_CMD_reset_sinumerik_setting_in_group
    PB_CMD_set_fixture_offset
 
-   # Возврат домой (TRAFOOF / CYCLE800 / SUPA ...) выводится только
-   # один раз в начале программы, а не на каждой операции.
+   # Return home (TRAFOOF / CYCLE800 / SUPA ...) is output only
+   # once at the program start, not on every operation.
    if { ![info exists pb_home_return_flag] } {
       set pb_home_return_flag 1
       MOM_do_template trafoof

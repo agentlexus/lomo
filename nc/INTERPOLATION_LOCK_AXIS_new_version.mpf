@@ -1,0 +1,69 @@
+;(Equipment:SINUMERIK-ONE-G300)
+;(Founder:user)
+;( 2026/09/08 19:21 /1)
+;(NC name:  Ã÷Ã÷”Ã)
+;(Machine time: 0.0 MIN)
+;(Total Tool:1)
+;(T;D16-54-100L-T3=MILL D=16.0000 DR_angle=0.0000 H1 D00)
+;;                                                                                               
+;(PC:LENOVO-AMD-RYZE)
+;(C:\Users\user\Desktop\ISO_10791-7_M1_80-M4_80.prt)
+N10 ;(Start of Program)
+N20 ;
+N30 DEF REAL _camtolerance
+N40 DEF REAL _F_CUTTING, _F_ENGAGE, _F_RETRACT
+N50 ;
+N60 G40 G17 G710 G94 G90 G60 G601 FNORM
+N70 TRAFOOF
+N80 CYCLE800()
+N90 SUPA G0 Z0.0 D0
+N100 SUPA X0.0
+N110 SUPA Y0.0
+N120 SUPA A0.0 C0.0
+N130 ;(start of Path)
+N140 _camtolerance=.06
+N150 ; 
+N160 ;(BOSS_MILLING)
+N170 ; 
+N180 ;(First Tool)
+N190 M1
+N200 T3 D1
+N210 M6
+N220 SUPA X0.0
+N230 SUPA Y-400. ;(First reference point)
+N240 ;(Initial Move)
+N250 R1=1.000
+N260 M8
+N270 S3979 M3
+N280 G54
+N290 G0 A0.0 C=DC(0.0)
+N300 COMPOF
+N310 CYCLE832(_camtolerance,_FINISH,1)
+N320 ;AXES LOCKED. 3-AXIS MILLING
+N330 TRAFOOF
+N340 ;COOLANT ON.
+N350 M8
+N360 ASCALE X=R1 Y=R1
+N370 G0 X-27.2943 Y27.2943 Z50. D1
+N380 ;Approach Move
+N390 Z-6.
+N400 ;Engage Move
+N410 G2 X0.0 Y35.5 I27.2943 J-41.2913 F1592.
+N420 ;Cutting
+N430 G1 G91 C-360.1 F200
+N440 ;Retract Move
+N450 G90
+N460 G2 X27.2943 Y27.2943 I0.0 J-49.497
+N470 ;Departure Move
+N480 G0 Z50.
+N490 CYCLE832()
+N500 SUPA G0 Z0.0
+N510 ;(End of Path)
+N520 M9
+N530 M5
+N540 SUPA G0 Z0.0 D0
+N550 SUPA X0.0
+N560 SUPA Y0.0
+N570 SUPA A0.0 C0.0
+N580 M30
+;(End of Program)
