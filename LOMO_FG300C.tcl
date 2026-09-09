@@ -1098,22 +1098,14 @@ proc MOM_bore_no_drag_move { } {
 
 
 #=============================================================
-
 #=============================================================
+proc PB_CMD__rotc_turn_block { } {
 #=============================================================
-proc PB_CMD__rotc_active { } {
-#=============================================================
-# Returns 1 when we are in the rotary-table C (interpolation-lock) mode that
-# should be output as a table rotation.  Active when either the NC UDE flag
-# mom_ude_interpolation_lock == "Yes" is set, or a Lock Axis (SET/LOCK) event
-# selected rotary FOURTH/FIFTH axis.
-   global mom_ude_interpolation_lock mom_lock_axis
-   if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } { return 1 }
-   if { [info exists mom_lock_axis] } {
-      if { $mom_lock_axis == "FOURTH" } { return 1 }
-      if { $mom_lock_axis == "FIFTH" }  { return 1 }
-   }
-   return 0
+# Single source of the rotary-table cutting block for the
+# interpolation-lock mode. The tool stays stationary while table C
+# rotates one full turn (slightly over 360 deg so the seam closes).
+# Callers emit the matching G90 when the flat pass ends.
+   MOM_output_literal "G1 G91 C-360.1 F200"
 }
 
 proc PB_CMD__rotc_arc_handle { } {
@@ -1124,22 +1116,22 @@ proc PB_CMD__rotc_arc_handle { } {
   }
 
   global mom_pos_arc_center mom_arc_radius
-  global pb_ra_active pb_ra_radius
+  global pb_lock_arc_active pb_lock_arc_radius
 
   set cx [expr $mom_pos_arc_center(0)]
   set cy [expr $mom_pos_arc_center(1)]
   set tol 0.5
 
-  if { ![info exists pb_ra_active] } { set pb_ra_active 0 }
+  if { ![info exists pb_lock_arc_active] } { set pb_lock_arc_active 0 }
 
   if { [expr abs($cx)] < $tol && [expr abs($cy)] < $tol } {
      # Working arc whose center is on the C axis (0,0): the whole circle is the
      # rotary-table pass. Output the single C rotation once on its first arc and
      # swallow all remaining arcs of the circle.
-     if { $pb_ra_active == 0 } {
-        set pb_ra_active 1
-        set pb_ra_radius $mom_arc_radius
-        MOM_output_literal "G1 G91 C-360.1 F200"
+     if { $pb_lock_arc_active == 0 } {
+        set pb_lock_arc_active 1
+        set pb_lock_arc_radius $mom_arc_radius
+        PB_CMD__rotc_turn_block
      }
      return 1
   }
@@ -1149,10 +1141,10 @@ proc PB_CMD__rotc_arc_handle { } {
   # departure arc is output (incremental C is still active). The literal
   # G1 block above does not update the post motion-G state, so force
   # G2/G3 so the retract arc starts with a circular code.
-  if { $pb_ra_active == 1 } {
+  if { $pb_lock_arc_active == 1 } {
      MOM_output_literal "G90"
      MOM_force Once G_motion
-     set pb_ra_active 0
+     set pb_lock_arc_active 0
   }
   return 0
 }
@@ -1192,54 +1184,54 @@ proc PB_CMD__rotc_linear_cut { } {
       return 0
    }
 
-   global pb_cr_active pb_cr_r pb_prev_r pb_prev_z
+   global pb_lock_cut_active pb_lock_cut_r pb_lock_prev_r pb_lock_prev_z
 
-   if { ![info exists pb_cr_active] } { set pb_cr_active 0 }
-   if { ![info exists pb_prev_r] }   { set pb_prev_r  -1.0 }
-   if { ![info exists pb_prev_z] }   { set pb_prev_z  0.0 }
+   if { ![info exists pb_lock_cut_active] } { set pb_lock_cut_active 0 }
+   if { ![info exists pb_lock_prev_r] }   { set pb_lock_prev_r  -1.0 }
+   if { ![info exists pb_lock_prev_z] }   { set pb_lock_prev_z  0.0 }
 
    set x [expr $mom_mcs_goto(0)]
    set y [expr $mom_mcs_goto(1)]
    set z [expr $mom_mcs_goto(2)]
    if { [catch {set r [expr hypot($x,$y)]}] } { set r 0.0 }
-   set dZ [expr abs($z - $pb_prev_z)]
+   set dZ [expr abs($z - $pb_lock_prev_z)]
 
-   if { $pb_cr_active == 0 } {
+   if { $pb_lock_cut_active == 0 } {
       # --- Not yet in a flat full-circle pass on C axis ---
-      if { $pb_prev_r >= 0 && $dZ < 0.001 && $r > 0.5 } {
-         if { [expr abs($r - $pb_prev_r)] < 0.2 } {
+      if { $pb_lock_prev_r >= 0 && $dZ < 0.001 && $r > 0.5 } {
+         if { [expr abs($r - $pb_lock_prev_r)] < 0.2 } {
             # Just entered a flat run at (almost) constant radius around (0,0)
-            set pb_cr_active 1
-            set pb_cr_r $r
+            set pb_lock_cut_active 1
+            set pb_lock_cut_r $r
             MOM_output_literal ";Cutting"
-            MOM_output_literal "G1 G91 C-360.1 F200"
+            PB_CMD__rotc_turn_block
          }
       }
-      set pb_prev_r $r
-      set pb_prev_z $z
-      if { $pb_cr_active } { return 1 }
+      set pb_lock_prev_r $r
+      set pb_lock_prev_z $z
+      if { $pb_lock_cut_active } { return 1 }
       return 0
    } else {
       # --- Inside the flat full-circle pass ---
       # A Z change signals the end of the flat rotary cut (helical out).
       if { $dZ > 0.01 } {
          MOM_output_literal "G90"
-         set pb_cr_active 0
-         set pb_prev_r $r
-         set pb_prev_z $z
+         set pb_lock_cut_active 0
+         set pb_lock_prev_r $r
+         set pb_lock_prev_z $z
          return 0
       }
       # Still on the same flat radius: consume this XY move (table rotates already)
-      if { [expr abs($r - $pb_cr_r)] < 0.8 } {
-         set pb_prev_r $r
-         set pb_prev_z $z
+      if { [expr abs($r - $pb_lock_cut_r)] < 0.8 } {
+         set pb_lock_prev_r $r
+         set pb_lock_prev_z $z
          return 1
       }
       # Left the circle radius -> stop rotary pass
       MOM_output_literal "G90"
-      set pb_cr_active 0
-      set pb_prev_r $r
-      set pb_prev_z $z
+      set pb_lock_cut_active 0
+      set pb_lock_prev_r $r
+      set pb_lock_prev_z $z
       return 0
    }
 }
@@ -1837,121 +1829,6 @@ proc MOM_length_compensation { } {
 #=============================================================
 
 #=============================================================
-
-#=============================================================
-proc PB_CMD__rotc_final_angle { } {
-#=============================================================
-  # Returns the final C angle: full 360 turn when pass is nearly closed,
-  # otherwise the actual accumulated angle.
-  global pb_rts_c_start pb_rts_delta
-  set total [expr $pb_rts_c_start + $pb_rts_delta]
-  if { [expr abs($pb_rts_delta)] >= 300.0 } {
-     if { $pb_rts_delta < 0.0 } {
-        return [expr $pb_rts_c_start - 360.0]
-     } else {
-        return [expr $pb_rts_c_start + 360.0]
-     }
-  }
-  return $total
-}
-
-proc PB_CMD__convert_round_to_rotation_c { } {
-#=============================================================
-  global mom_ude_interpolation_lock
-  if { ![info exists mom_ude_interpolation_lock] || $mom_ude_interpolation_lock != "Yes" } {
-     return 0
-  }
-
-  global mom_pos mom_mcs_goto mom_out_angle_pos mom_motion_type
-  global RAD2DEG
-  global pb_rts_active pb_rts_radius pb_rts_c_start pb_rts_delta pb_rts_prev_ang pb_rts_output_started
-
-  # State variables
-  if { ![info exists pb_rts_active] } { set pb_rts_active 0 }
-  if { ![info exists pb_rts_output_started] } { set pb_rts_output_started 0 }
-
-  set min_radius 10.0
-  set tol_exit 2.5
-
-  # --- non-cutting motion: finish a pending rotation pass, then normal X/Y ---
-  set is_cut 1
-  if { ![info exists mom_motion_type] ||         [string match "ENGAGE" $mom_motion_type] ||         [string match "APPROACH" $mom_motion_type] ||         [string match "RETRACT" $mom_motion_type] ||         [string match "RETURN" $mom_motion_type] ||         [string match "LIFT" $mom_motion_type] ||         [string match "TRAVERSAL" $mom_motion_type] ||         [string match "RAPID" $mom_motion_type] ||         [string match "GOHOME" $mom_motion_type] ||         [string match "FROM" $mom_motion_type] } {
-     set is_cut 0
-  }
-
-  if { $is_cut == 0 } {
-     if { $pb_rts_active == 1 } {
-        # finalize the full 360 pass: output C start -> start+delta
-        set mom_mcs_goto(0) $pb_rts_radius
-        set mom_mcs_goto(1) 0.0
-        set mom_mcs_goto(2) $mom_pos(2)
-        set mom_out_angle_pos(0) 0.0
-        # finish full rotation incrementally: G91, C-360, then restore G90
-        MOM_output_literal "G91"
-        MOM_output_literal "C-360"
-        MOM_output_literal "G90"
-        set pb_rts_active 0
-        set pb_rts_output_started 0
-     }
-     return 0
-  }
-
-  # --- cutting motion ---
-  set x [expr $mom_pos(0)]
-  set y [expr $mom_pos(1)]
-  set R [expr sqrt($x*$x + $y*$y)]
-  set ang [expr atan2($y, $x) * $RAD2DEG]
-
-  if { $pb_rts_active == 0 } {
-     if { $R < $min_radius } {
-        return 0
-     }
-     # start a new full-rotation pass
-     set pb_rts_active 1
-     set pb_rts_radius $R
-     set pb_rts_c_start 0.0          ;# normalize start to 0
-     set pb_rts_delta 0.0
-     set pb_rts_prev_ang $ang
-     set pb_rts_output_started 1
-     # first output block: position on radius at start angle 0
-     set mom_mcs_goto(0) $R
-     set mom_mcs_goto(1) 0.0
-     set mom_mcs_goto(2) $mom_pos(2)
-     set mom_out_angle_pos(0) 0.0
-     set mom_out_angle_pos(1) $pb_rts_c_start
-     MOM_force Once fifth_axis
-     MOM_do_template linear_move_rotary
-     return 1
-  }
-
-  # already active: accumulate delta angle
-  if { [expr abs($R - $pb_rts_radius)] > $tol_exit } {
-     # left the working circle: finalize and let normal X/Y handle this move
-     set mom_mcs_goto(0) $pb_rts_radius
-     set mom_mcs_goto(1) 0.0
-     set mom_mcs_goto(2) $mom_pos(2)
-     set mom_out_angle_pos(0) 0.0
-     MOM_output_literal "G91"
-     MOM_output_literal "C-360"
-     MOM_output_literal "G90"
-     set pb_rts_active 0
-     set pb_rts_output_started 0
-     return 0
-  }
-
-  set d [expr $ang - $pb_rts_prev_ang]
-  while { $d > 180.0 } {
-     set d [expr $d - 360.0]
-  }
-  while { $d < -180.0 } {
-     set d [expr $d + 360.0]
-  }
-  set pb_rts_delta [expr $pb_rts_delta + $d]
-  set pb_rts_prev_ang $ang
-  set pb_rts_radius $R
-  return 1   ;# accumulate, do not output per-point
-}
-
 proc MOM_linear_move { } {
 #=============================================================
    ABORT_EVENT_CHECK
@@ -5639,24 +5516,6 @@ proc PB_CMD_config_cycle_start { } {
 
 
 #=============================================================
-proc PB_CMD_coolant_on { } {
-#=============================================================
-# Wrapper for the Coolant On event. If M8 was already output in Initial Move
-# via PB_CMD_output_coolant_spindle, do not output it again
-# (otherwise M8 would be duplicated at the first motion).
-  global mom_coolant_mode
-  global mom_sys_coolant_pre_output
-
-   if {[info exists mom_sys_coolant_pre_output] && $mom_sys_coolant_pre_output == 1} {
-      return
-   }
-
-   COOLANT_SET
-   MOM_do_template coolant_on
-}
-
-
-#=============================================================
 proc PB_CMD_creat_tool_list_2 { } {
 #=============================================================
 #  Place this custom command in either the start of program
@@ -6376,16 +6235,14 @@ proc PB_CMD_detect_operation_type { } {
   # Interpolation-lock (UDE interpolation_lock): 4-axis machining by rotating
   # table C with TRAFOOF (no RTCP). Axis A stays locked, axis C is unlocked
   # (see PB_CMD_m50_m52_unlock).
-  global mom_ude_interpolation_lock mom_siemens_ori_def
+  global mom_ude_interpolation_lock mom_siemens_ori_def pb_lock_arc_active
   if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
      set dpp_ge(toolpath_axis_num) 5
      # Interpolation-lock runs with TRAFOOF (no RTCP): table rotates,
      # tool stays stationary on the boss side.
      set mom_siemens_5axis_mode "TRAFOOF"
      set mom_siemens_ori_def "ROTARY AXES" ; # table rotation -> axis angles (C), not vector
-   global pb_ra_active pb_rts_active
-   set pb_ra_active 0
-   set pb_rts_active 0
+     set pb_lock_arc_active 0
   }
 
 
@@ -8810,8 +8667,6 @@ proc PB_CMD_move_force_addresses { } {
 #=============================================================
   MOM_force once G_motion X Y
   MOM_force once G_motion Z D
-  MOM_output_literal ";COOLANT ON."
-  MOM_output_literal "M8"
 }
 
 

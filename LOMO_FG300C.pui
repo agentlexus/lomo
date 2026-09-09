@@ -1214,7 +1214,6 @@ Text              ""  0  "Text String"  0
       {"PB_CMD_clamp_fifth_axis" "" "Custom Command"} \
       {"PB_CMD_clamp_fourth_axis" "" "Custom Command"} \
       {"PB_CMD_config_cycle_start" "" "Custom Command"} \
-      {"PB_CMD_coolant_on" "" "Custom Command"} \
       {"PB_CMD_creat_tool_list_2" "" "Custom Command"} \
       {"PB_CMD_cycle_tap" "" "Custom Command"} \
       {"PB_CMD_cycle_tap_parameter_setting" "" "Custom Command"} \
