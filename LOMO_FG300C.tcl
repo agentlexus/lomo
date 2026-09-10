@@ -1650,27 +1650,39 @@ proc MOM_first_move { } {
    MOM_do_template g17
 
    MOM_output_literal ";First Move"
-   PB_call_macro CYCLE832_v7
 
-   if { [PB_CMD__check_block_CYCLE832] } {
+   # First-Move chain mirrors the reference Initial-Move chain
+   # (PB_CMD_output_initial_move): G54 -> G0 A0.0 C=DC(0.0) ->
+   # COMPOF/CYCLE832 -> TRAFOOF.  ORIRESET and CYCLE800(...) are
+   # output only when the operation really needs them (3+2 swivel),
+   # never for a plain planar / 3-axis first move.
+
+   MOM_force Once G_offset
+   MOM_do_template fixture_offset_1
+
+   if { [PB_CMD__check_block_rotation_axes] } {
+      MOM_force Once G_motion fourth_axis fifth_axis_DC
       MOM_do_template rotation_axes
    }
 
-   if { [PB_CMD__check_block_rotation_axes] } {
+   if { [PB_CMD__check_block_ORIRESET] } {
       PB_call_macro ORIRESET
    }
 
-   if { [PB_CMD__check_block_ORIRESET] } {
-      MOM_do_template traori_trafoof
+   if { [PB_CMD__check_block_CYCLE832] } {
+      PB_call_macro CYCLE832_v7
    }
 
-   MOM_do_template fixture_offset
+   MOM_force Once transf
+   MOM_do_template traori_trafoof
+
    PB_CMD_output_trans_arot
-   PB_call_macro CYCLE800_sl
 
    if { [PB_CMD__check_block_CYCLE800] } {
-      PB_CMD_move_force_addresses
+      PB_call_macro CYCLE800_sl
    }
+
+   PB_CMD_move_force_addresses
    catch { MOM_$mom_motion_event }
 
   # Configure turbo output settings
@@ -2442,7 +2454,11 @@ proc PB_auto_tool_change { } {
 
    MOM_force Once Text G_motion D
    MOM_do_template tool_change_return_home_Z
+
+   MOM_force Once Text G_motion X
    MOM_do_template tool_change_return_home_X
+
+   MOM_force Once Text G_motion Y
    MOM_do_template tool_change_return_home_Y
 
    MOM_do_template stop
@@ -2458,9 +2474,10 @@ proc PB_auto_tool_change { } {
       MOM_do_template tool_preselect
    }
 
-   MOM_force Once X
+   MOM_force Once Text G_motion X
    MOM_do_template return_first_ref_X
 
+   MOM_force Once Text G_motion Y
    MOM_do_template return_first_ref_Y
 }
 
@@ -8961,7 +8978,7 @@ proc PB_CMD_output_end_of_program { } {
 #     SUPA G00 Z0.0 D0
 #     SUPA G00 X0.0
 #     SUPA G00 Y0.0
-#     SUPA G00 A0.0 C0.0
+#     SUPA G00 A0.0
 #     M30
 #     ;(End of Program)
   global mom_program_aborted mom_event_error
@@ -8974,11 +8991,18 @@ proc PB_CMD_output_end_of_program { } {
    MOM_do_template spindle_off
 
    # Return home with numeric coordinates, as in reference NC 2.mpf.
-   # Force addresses so each SUPA block always outputs its coordinate.
-   MOM_force Once Text G_motion Z X Y fourth_axis fifth_axis D
+   # Force G0 and every coordinate on each SUPA block so no SUPA
+   # line comes out empty or without the rapid word.
+   MOM_force Once Text G_motion D Z
    MOM_do_template tool_change_return_home_Z
+
+   MOM_force Once Text G_motion X
    MOM_do_template tool_change_return_home_X
+
+   MOM_force Once Text G_motion Y
    MOM_do_template tool_change_return_home_Y
+
+   MOM_force Once Text G_motion fourth_axis
    MOM_do_template tool_change_return_home_AC
 
    MOM_do_template end_of_program
@@ -9130,8 +9154,10 @@ proc PB_CMD_output_first_tool { } {
       MOM_do_template tool_preselect
    }
 
-   MOM_force Once X
+   MOM_force Once Text G_motion X
    MOM_do_template return_first_ref_X
+
+   MOM_force Once Text G_motion Y
    MOM_do_template return_first_ref_Y
 }
 
@@ -9347,10 +9373,12 @@ proc PB_CMD_output_start_of_path { } {
 #     G40...
 #     TRAFOOF
 #     CYCLE800()
-#     SUPA G00 Z0.0 D0 / X0.0 / Y0.0 / A0.0 C0.0
+#     SUPA G00 Z0.0 D0 / X0.0 / Y0.0 / A0.0
 #     ;(start of Path)
 #     _camtolerance=.01
 #     ;(D15-KC)
+   global pb_home_return_flag
+
    PB_CMD_start_of_extcall_operation
    PB_CMD_output_start_program
    PB_CMD_reset_sinumerik_setting_in_group
@@ -9362,10 +9390,18 @@ proc PB_CMD_output_start_of_path { } {
       set pb_home_return_flag 1
       MOM_do_template trafoof
       MOM_do_template reset_cycle800
+
+      MOM_force Once Text G_motion D Z
       MOM_do_template tool_change_return_home_Z
+
+      MOM_force Once Text G_motion X
       MOM_do_template tool_change_return_home_X
+
+      MOM_force Once Text G_motion Y
       MOM_do_template tool_change_return_home_Y
+      MOM_force Once Text G_motion fourth_axis
       MOM_do_template tool_change_return_home_AC
+
    }
 
    MOM_output_literal ";(start of Path)"

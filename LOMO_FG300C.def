@@ -1390,7 +1390,6 @@ FORMATTING
        Text[SUPA]
        G_motion[$mom_sys_rapid_code]
        fourth_axis[0.0]
-       fifth_axis[0.0]
   }
 
   BLOCK_TEMPLATE tool_change_return_home_X
