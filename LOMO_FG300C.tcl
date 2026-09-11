@@ -9367,6 +9367,20 @@ proc PB_CMD_output_program_header { } {
 
 
 #=============================================================
+proc PB_CMD__format_cam_tolerance { value } {
+#=============================================================
+# Format a tolerance the way the post does (up to 4 decimals, trailing
+# zeros suppressed) but keep the leading zero: 0.06 instead of .06.
+   set text [format "%.4f" $value]
+   regsub -all {0+$} $text "" text
+   if { [string match "*." $text] } {
+      append text "0"
+   }
+   return $text
+}
+
+
+#=============================================================
 proc PB_CMD_output_start_of_path { } {
 #=============================================================
 # Program start logic in the order of the reference program 2.mpf:
@@ -9375,7 +9389,7 @@ proc PB_CMD_output_start_of_path { } {
 #     CYCLE800()
 #     SUPA G00 Z0.0 D0 / X0.0 / Y0.0 / A0.0
 #     ;(start of Path)
-#     _camtolerance=.01
+#     _camtolerance=0.01
 #     ;(D15-KC)
    global pb_home_return_flag
 
@@ -9406,7 +9420,11 @@ proc PB_CMD_output_start_of_path { } {
 
    MOM_output_literal ";(start of Path)"
 
-   MOM_do_template start_of_path_2
+   # _camtolerance from CAM (intol + outtol) with a leading zero (0.06, not .06)
+   if { [info exists mom_inside_outside_tolerances] } {
+      set cam_tolerance_total [expr {double($mom_inside_outside_tolerances(0)) + double($mom_inside_outside_tolerances(1))}]
+      MOM_output_literal "_camtolerance=[PB_CMD__format_cam_tolerance $cam_tolerance_total]"
+   }
 
    MOM_output_literal "; "
 
