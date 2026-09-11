@@ -9391,7 +9391,7 @@ proc PB_CMD_output_start_of_path { } {
 #     ;(start of Path)
 #     _camtolerance=0.01
 #     ;(D15-KC)
-   global pb_home_return_flag
+   global pb_home_return_flag mom_inside_outside_tolerances
 
    PB_CMD_start_of_extcall_operation
    PB_CMD_output_start_program
@@ -9421,7 +9421,7 @@ proc PB_CMD_output_start_of_path { } {
    MOM_output_literal ";(start of Path)"
 
    # _camtolerance from CAM (intol + outtol) with a leading zero (0.06, not .06)
-   if { [info exists mom_inside_outside_tolerances] } {
+   if { [info exists mom_inside_outside_tolerances(0)] && [info exists mom_inside_outside_tolerances(1)] } {
       set cam_tolerance_total [expr {double($mom_inside_outside_tolerances(0)) + double($mom_inside_outside_tolerances(1))}]
       MOM_output_literal "_camtolerance=[PB_CMD__format_cam_tolerance $cam_tolerance_total]"
    }
