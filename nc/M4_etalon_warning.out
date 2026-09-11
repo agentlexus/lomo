@@ -1,0 +1,51 @@
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation FLOOR_FACING_01_COPY - Event 10 : MOM_path_region_marker_start (UNDEFINED)
+    N10 M6
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation FLOOR_FACING_01_COPY - Event 57 : MOM_linear_move (CUT)
+    N68 G1 X46.5
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation PLANAR_MILL_COPY - Event 72 : MOM_linear_move (DEPARTURE)
+    ;(PLANAR_MILL_COPY)
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_COPY - Event 79 MOM_cutcom_on : linear_move (ENGAGE)
+    N88 Z-28. F4000.
+      [ MOM_cutcom_on ]
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_COPY - Event 98 MOM_cutcom_on : linear_move (STEPOVER)
+    N109 X6. Y-55.7
+      [ MOM_cutcom_on ]
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_COPY - Event 117 MOM_cutcom_on : linear_move (STEPOVER)
+    N131 X6. Y-55.2
+      [ MOM_cutcom_on ]
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_COPY - Event 136 MOM_cutcom_on : linear_move (STEPOVER)
+    N153 X6. Y-54.7
+      [ MOM_cutcom_on ]
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_COPY - Event 155 MOM_cutcom_on : linear_move (STEPOVER)
+    N175 X6. Y-54.2
+      [ MOM_cutcom_on ]
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_COPY - Event 174 MOM_cutcom_on : linear_move (STEPOVER)
+    N197 X6. Y-53.7
+      [ MOM_cutcom_on ]
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_COPY - Event 193 MOM_cutcom_on : linear_move (STEPOVER)
+    N219 X6. Y-53.2
+      [ MOM_cutcom_on ]
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation PLANAR_MILL_COPY - Event 205 : MOM_linear_move (CUT)
+    N234 G1 X0.0
+ 
