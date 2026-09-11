@@ -1,0 +1,105 @@
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation FLOOR_FACING_001 - Event 10 : MOM_path_region_marker_start (UNDEFINED)
+    N10 M6
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation FLOOR_FACING_001 - Event 45 : MOM_linear_move (CUT)
+    N56 G1 X-48.5
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation PLANAR_MILL_001 - Event 60 : MOM_linear_move (DEPARTURE)
+    ;(PLANAR_MILL_001)
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_001 - Event 67 MOM_cutcom_on : linear_move (ENGAGE)
+    N76 Z-14. F600.
+      [ MOM_cutcom_on ]
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_001 - Event 86 MOM_cutcom_on : linear_move (STEPOVER)
+    N97 X8. Y-57.
+      [ MOM_cutcom_on ]
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation PLANAR_MILL_001 - Event 98 : MOM_linear_move (CUT)
+    N112 G1 X0.0
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation PLANAR_MILL_002 - Event 119 : MOM_linear_move (DEPARTURE)
+    ;(PLANAR_MILL_002)
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_002 - Event 126 MOM_cutcom_on : linear_move (ENGAGE)
+    N136 Z-6. F600.
+      [ MOM_cutcom_on ]
+ 
+CUTCOM register 0 must be within the range between 1 and 99
+  Operation PLANAR_MILL_002 - Event 145 MOM_cutcom_on : linear_move (STEPOVER)
+    N157 X8. Y-56.
+      [ MOM_cutcom_on ]
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation PLANAR_MILL_002 - Event 157 : MOM_linear_move (CUT)
+    N172 G1 X0.0
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation FLOOR_FACING_G32 - Event 179 : MOM_linear_move (DEPARTURE)
+    ;(FLOOR_FACING_G32)
+ 
+secondary rotary position being used
+  Operation FLOOR_FACING_G32 - Event 181 : MOM_linear_move (RAPID)
+    ;(FLOOR_FACING_G32)
+ 
+Rotary axis limit violated, discontinuous motion may result.
+  Operation FLOOR_FACING_G32 - Event 182 MOM_before_motion : linear_move (RAPID)
+    ;(FLOOR_FACING_G32)
+      [ MOM_before_motion ][ PB_CMD_kin_before_motion ][ ROTARY_AXIS_RETRACT ][ PB_ROTARY_AXIS_RETRACT ]
+ 
+Error to evaluate expression $mom_siemens_cycle_dmode in CYCLE800_sl: can't read "mom_siemens_cycle_dmode": no such variable
+  Operation FLOOR_FACING_G32 - Event 182 MOM_before_output : linear_move (RAPID)
+    N192 TRAFOOF
+      [ MOM_first_move ][ PB_call_macro ]
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation FLOOR_FACING_G32 - Event 186 : MOM_linear_move (FIRSTCUT)
+    N201 X47.
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation FLOOR_FACING_G32_2 - Event 202 : MOM_linear_move (DEPARTURE)
+    ;(FLOOR_FACING_G32_2)
+ 
+Error to evaluate expression $mom_siemens_cycle_dmode in CYCLE800_sl: can't read "mom_siemens_cycle_dmode": no such variable
+  Operation FLOOR_FACING_G32_2 - Event 205 MOM_before_output : linear_move (RAPID)
+    N218 TRAFOOF
+      [ MOM_first_move ][ PB_call_macro ]
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation FLOOR_FACING_G32_2 - Event 209 : MOM_linear_move (FIRSTCUT)
+    N227 X47.
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation FLOOR_FACING_G32_3 - Event 225 : MOM_linear_move (DEPARTURE)
+    ;(FLOOR_FACING_G32_3)
+ 
+Error to evaluate expression $mom_siemens_cycle_dmode in CYCLE800_sl: can't read "mom_siemens_cycle_dmode": no such variable
+  Operation FLOOR_FACING_G32_3 - Event 228 MOM_before_output : linear_move (RAPID)
+    N244 TRAFOOF
+      [ MOM_first_move ][ PB_call_macro ]
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation FLOOR_FACING_G32_3 - Event 232 : MOM_linear_move (FIRSTCUT)
+    N253 X47.
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_start
+  Operation FLOOR_FACING_G32_4 - Event 248 : MOM_linear_move (DEPARTURE)
+    ;(FLOOR_FACING_G32_4)
+ 
+Error to evaluate expression $mom_siemens_cycle_dmode in CYCLE800_sl: can't read "mom_siemens_cycle_dmode": no such variable
+  Operation FLOOR_FACING_G32_4 - Event 251 MOM_before_output : linear_move (RAPID)
+    N270 TRAFOOF
+      [ MOM_first_move ][ PB_call_macro ]
+ 
+Потеряно событие: Имя события: MOM_path_region_marker_end
+  Operation FLOOR_FACING_G32_4 - Event 255 : MOM_linear_move (FIRSTCUT)
+    N279 X47.
+ 
