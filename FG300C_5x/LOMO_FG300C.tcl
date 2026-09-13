@@ -9509,7 +9509,7 @@ proc PB_CMD_output_start_program { } {
     # MOM_output_literal ";DATE TIME   :$mom_date"
      MOM_output_literal ";"
      MOM_output_literal "DEF REAL _camtolerance"
-     MOM_output_literal "DEF REAL _F_CUTTING, _F_ENGAGE, _F_RETRACT"
+    # MOM_output_literal "DEF REAL _F_CUTTING, _F_ENGAGE, _F_RETRACT"
      MOM_output_literal ";"
      MOM_force Once G_cutcom G_plane G F_control G_stopping G_feed G_unit G_mode
      MOM_do_template start_of_program
