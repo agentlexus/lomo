@@ -1152,16 +1152,54 @@ proc PB_CMD__rotc_arc_handle { } {
 #=============================================================
 proc PB_CMD__rotc_r1 { } {
 #=============================================================
-# Return scale factor R1 (ASCALE) for interpolation-lock (table Y... rotation).
-# Value comes from NC UDE parameter if provided, else defaults to 1.0.
-   global mom_ude_interpolation_lock mom_ude_r1 mom_ude_rotation_scale_R1 mom_ude_interpolation_lock_R1 mom_ude_lock_axis_R1
+# Return the scale factor R1 (ASCALE) for the interpolation-lock mode.
+# The value comes from the UDE "Interpolation_lock" (PARAM ASCALE_value ->
+# mom_ASCALE_value); 1.0 when the event does not provide a value.
+   global pb_ascale_req mom_ASCALE_value
    set r1 1.0
-   if { [info exists mom_ude_r1] && $mom_ude_r1 != "" } {
-      if { [catch {set r1 [expr double($mom_ude_r1)]}] } { set r1 1.0 }
-   } elseif { [info exists mom_ude_rotation_scale_R1] && $mom_ude_rotation_scale_R1 != "" } {
-      if { [catch {set r1 [expr double($mom_ude_rotation_scale_R1)]}] } { set r1 1.0 }
+   if { [info exists pb_ascale_req] && $pb_ascale_req != "" } {
+      set r1 $pb_ascale_req
+   } elseif { [info exists mom_ASCALE_value] && $mom_ASCALE_value != "" } {
+      set r1 $mom_ASCALE_value
    }
+   if { [catch {set r1 [expr double($r1)]}] } { set r1 1.0 }
    return $r1
+}
+
+#=============================================================
+proc PB_CMD__lock_mode { } {
+#=============================================================
+# Single source of truth for the rotary-table interpolation-lock mode.
+# Accepted ONLY from the UDE "Interpolation_lock":
+#    command_status  = Active
+#    lock_axis       = Fourth   (rotary table C, any case)
+#    lock_axis_plane = XYPLAN   (planar XY pass, XYPLANE also accepted)
+# The verdict is cached in pb_lock_mode for the current operation.
+   global pb_lock_req pb_lock_axis_req pb_lock_plane_req pb_lock_mode
+   set pb_lock_mode 0
+   if { [info exists pb_lock_req] && $pb_lock_req == 1 } {
+      if { [info exists pb_lock_axis_req] && $pb_lock_axis_req == "fourth" } {
+         if { [info exists pb_lock_plane_req] && [string match "xyplan*" $pb_lock_plane_req] } {
+            set pb_lock_mode 1
+         }
+      }
+   }
+   return $pb_lock_mode
+}
+
+#=============================================================
+proc PB_CMD__lock_mode_apply { } {
+#=============================================================
+# Publish the lock-mode verdict into mom_ude_interpolation_lock - the state
+# variable read by the rest of the post (TRAFOOF, arc handling, M52,
+# R1/ASCALE, motion output). Evaluated at the start of every operation, so
+# no operation can inherit the mode from a previous one.
+   global mom_ude_interpolation_lock
+   if { [PB_CMD__lock_mode] } {
+      set mom_ude_interpolation_lock "Yes"
+   } else {
+      catch {unset mom_ude_interpolation_lock}
+   }
 }
 
 #=============================================================
@@ -1624,9 +1662,21 @@ proc MOM_end_of_path { } {
    global mom_sys_in_operation
    set mom_sys_in_operation 0
 
-   # Reset the interpolation-lock mode so it does not affect
-   # subsequent operations without an explicit UDE Lock Axis.
+   # Reset the interpolation-lock mode and its UDE inputs so neither the mode
+   # nor the stock Lock Axis variables leak into the following operations.
+   # The "global" line is required - without it "unset" would address
+   # non-existent local variables and the whole cleanup would be a no-op.
+   global mom_ude_interpolation_lock pb_lock_mode pb_lock_req
+   global pb_lock_axis_req pb_lock_plane_req pb_ascale_req
+   global mom_lock_axis mom_lock_axis_plane
    catch {unset mom_ude_interpolation_lock}
+   catch {unset pb_lock_mode}
+   catch {unset pb_lock_req}
+   catch {unset pb_lock_axis_req}
+   catch {unset pb_lock_plane_req}
+   catch {unset pb_ascale_req}
+   catch {unset mom_lock_axis}
+   catch {unset mom_lock_axis_plane}
 }
 
 
@@ -1892,6 +1942,20 @@ proc MOM_lock_axis { } {
    global mom_lock_axis_plane
    global mom_lock_axis_value
    PB_CMD_MOM_lock_axis
+}
+
+
+#=============================================================
+proc MOM_Interpolation_lock { } {
+#=============================================================
+# UDE "Interpolation lock". The post dispatches a UDE to MOM_<event name>,
+# so this wrapper forwards the event data to the handler
+# (see PB_CMD_MOM_Interpolation_lock / PB_CMD__lock_mode).
+   global mom_command_status
+   global mom_lock_axis
+   global mom_lock_axis_plane
+   global mom_ASCALE_value
+   PB_CMD_MOM_Interpolation_lock
 }
 
 
@@ -2739,38 +2803,52 @@ proc PB_CMD_MOM_insert { } {
 
 
 #=============================================================
-proc PB_CMD_MOM_interpolation_lock { } {
-#=============================================================
-# Interpolation lock (Interpolation Lock) - UDE.
-# When active (mom_ude_interpolation_lock == "Yes") machining runs
-# in 4-axis mode: table rotation C with TRAFOOF (no RTCP).
-# Axis A stays locked, axis C is unlocked (M52).
-# Applied to planar operations (e.g. circular milling by table rotation).
-   global mom_ude_interpolation_lock
-}
-
-
-#=============================================================
 proc PB_CMD_MOM_lock_axis { } {
 #=============================================================
-# Stock UDE Lock Axis reworked for our needs.
-# When active, the "interpolation lock" mode is turned on:
-# linear XYZ interpolation is disabled, machining goes
-# through rotating table C (4-axis mode).
-#   - Axis A stays locked (M50 not output)
-#   - Axis C is unlocked (M52), TRAFOOF (no RTCP)
-#   - Circular arcs are kept as G2/G3; the working circle is
-#     converted by PB_CMD__rotc_arc_handle to a C-axis rotation.
-#
-   global mom_ude_interpolation_lock
-
-   # Enable the interpolation-lock mode.
-   # PB_CMD_detect_operation_type (TRAFOOF, arc handling) and
-   # PB_CMD_m50_m52_unlock (M52 + lock comment) already react
-   # to this variable. No need to duplicate the logic.
-   set mom_ude_interpolation_lock "Yes"
+# DEPRECATED: the stock UDE "Lock Axis" no longer switches the post into the
+# rotary-table interpolation-lock mode. The only trigger is the UDE
+# "Interpolation_lock" (see PB_CMD_MOM_Interpolation_lock / PB_CMD__lock_mode).
+# The event stays declared in .cdl/.pui so that old parts do not fail.
+   global mom_lock_axis
 }
 
+
+#=============================================================
+proc PB_CMD_MOM_Interpolation_lock { } {
+#=============================================================
+# UDE "Interpolation lock" - the only trigger of the rotary-table
+# interpolation-lock mode (see PB_CMD__lock_mode):
+#    command_status  : Active / Inactive
+#    lock_axis       : Fourth / Off
+#    lock_axis_plane : XYPLAN / NONE
+#    ASCALE_value    : scale factor R1 emitted to the NC program
+# The inputs are snapshotted here, the verdict is taken in PB_CMD__lock_mode.
+   global mom_command_status mom_lock_axis mom_lock_axis_plane mom_ASCALE_value
+   global pb_lock_req pb_lock_axis_req pb_lock_plane_req pb_ascale_req
+
+   # Values are compared case-insensitively (see PB_CMD__lock_mode).
+   set pb_lock_req 0
+   if { [info exists mom_command_status] } {
+      if { [string tolower $mom_command_status] == "active" } { set pb_lock_req 1 }
+   }
+
+   set pb_lock_axis_req "off"
+   if { [info exists mom_lock_axis] && $mom_lock_axis != "" } {
+      set pb_lock_axis_req [string tolower $mom_lock_axis]
+   }
+
+   set pb_lock_plane_req "none"
+   if { [info exists mom_lock_axis_plane] && $mom_lock_axis_plane != "" } {
+      set pb_lock_plane_req [string tolower $mom_lock_axis_plane]
+   }
+
+   set pb_ascale_req 1.0
+   if { [info exists mom_ASCALE_value] && $mom_ASCALE_value != "" } {
+      if { [catch {set pb_ascale_req [expr double($mom_ASCALE_value)]}] } {
+         set pb_ascale_req 1.0
+      }
+   }
+}
 
 #=============================================================
 proc PB_CMD_MOM_operator_message { } {
@@ -6249,9 +6327,10 @@ proc PB_CMD_detect_operation_type { } {
     }
   }
 
-  # Interpolation-lock (UDE interpolation_lock): 4-axis machining by rotating
+  # Interpolation-lock (UDE "Interpolation_lock"): 4-axis machining by rotating
   # table C with TRAFOOF (no RTCP). Axis A stays locked, axis C is unlocked
-  # (see PB_CMD_m50_m52_unlock).
+  # (see PB_CMD_m50_m52_unlock). The mode is decided once per operation, here.
+  PB_CMD__lock_mode_apply
   global mom_ude_interpolation_lock mom_siemens_ori_def pb_lock_arc_active
   if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
      set dpp_ge(toolpath_axis_num) 5
@@ -8660,9 +8739,10 @@ proc PB_CMD_m50_m52_unlock { } {
 # function PB_CMD_detect_5axis_tool_path (uses mom_operation_type,
 # mom_tool_axis_type and mom_tool_path_type).
 #
-# Separate mode: "Interpolation lock" (UDE interpolation_lock).
+# Separate mode: "Interpolation lock" (UDE "Interpolation_lock").
 # When active, machining runs in 4-axis mode (table rotation C
 # with TRAFOOF, no RTCP): axis A stays locked, axis C unlocked (M52).
+   global mom_ude_interpolation_lock
 if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
     # 4-axis machining: table rotation C, axis A locked
     MOM_output_literal "M52 ;(C-axis loose)"
@@ -9179,15 +9259,14 @@ proc PB_CMD_output_initial_move { } {
 
    MOM_output_literal ";(Initial Move)"
 
-   # If the Lock-Axis UDE selected rotary FOURTH (table C), treat this whole path
-   # as the rotary-table interpolation-lock mode. Ensure the downstream flags stay on.
-   global mom_lock_axis mom_lock_axis_plane mom_ude_interpolation_lock
-   if { [info exists mom_lock_axis] && $mom_lock_axis == "FOURTH" } {
-      set mom_ude_interpolation_lock "Yes"
-   }
+   # The lock mode is driven by the UDE "Interpolation_lock" only (see
+   # PB_CMD__lock_mode). Re-evaluate it here as well: the UDE event may be
+   # posted after the operation was first examined, and the verdict must be in
+   # force before R1/ASCALE are emitted.
+   PB_CMD__lock_mode_apply
 
-   # Rotating-table (interpolation-lock): assign scale factor R1 (ASCALE).
-   if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+   # Rotating-table (interpolation-lock): R1/ASCALE are emitted in this mode only.
+   if { [PB_CMD__lock_mode] } {
       set r1val [PB_CMD__rotc_r1]
       set r1str [format "%.3f" $r1val]
       MOM_output_literal "R1=$r1str"
@@ -9225,7 +9304,7 @@ proc PB_CMD_output_initial_move { } {
    PB_CMD_move_force_addresses
 
    # Rotating-table (interpolation-lock): activate scaling before first XY approach.
-   if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+   if { [PB_CMD__lock_mode] } {
       MOM_output_literal "ASCALE X=R1 Y=R1"
    }
 

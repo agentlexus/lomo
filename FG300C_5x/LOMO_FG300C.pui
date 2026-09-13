@@ -383,7 +383,7 @@ Text              ""  0  "Text String"  0
 {program_control}          {PB_CMD_MOM_program_control}  {Sinumerik Program Control} {UDE}
 {rotate}                   {PB_CMD_MOM_rotate}  {Rotate} {UDE}
 {text}                     {PB_CMD_MOM_text}  {User Defined} {UDE}
-{interpolation_lock}       {PB_CMD_MOM_interpolation_lock}  {Interpolation Lock} {UDE}
+{Interpolation_lock}       {PB_CMD_MOM_Interpolation_lock}  {Interpolation lock} {UDE}
 #Control Functions End
 
 #Motions Start
@@ -1157,7 +1157,7 @@ Text              ""  0  "Text String"  0
       {"PB_CMD_MOM_rotate" "" "Custom Command"} \
       {"PB_CMD_MOM_sinumerik_840D" "" "Custom Command"} \
       {"PB_CMD_MOM_text" "" "Custom Command"} \
-      {"PB_CMD_MOM_interpolation_lock" "" "Custom Command"} \
+      {"PB_CMD_MOM_Interpolation_lock" "" "Custom Command"} \
       {"PB_CMD___log_revisions" "" "Custom Command"} \
       {"PB_CMD__catch_warning" "" "Custom Command"} \
       {"PB_CMD__check_block_CYCLE800" "" "Custom Command"} \

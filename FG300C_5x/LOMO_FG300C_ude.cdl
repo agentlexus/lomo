@@ -1,0 +1,38 @@
+MACHINE FANUC
+
+EVENT Interpolation_lock
+{
+   UI_LABEL "Interpolation lock"
+   CATEGORY MILL DRILL LATHE
+   PARAM command_status
+   {
+      TYPE o
+      DEFVAL "Active"
+      OPTIONS "Active","Inactive"
+      UI_LABEL "Status"
+   }
+   PARAM lock_axis
+   {
+      TYPE o
+      DEFVAL "Fourth"
+      OPTIONS "Fourth","Off"
+      UI_LABEL "Interpolation Axis"
+   }
+   PARAM lock_axis_plane
+   {
+      TYPE o
+      DEFVAL "XYPLAN"
+      OPTIONS "XYPLAN","NONE"
+      UI_LABEL "Locked Interpolation"
+   }
+   PARAM ASCALE_value
+   {
+      TYPE d
+      DEFVAL "1.000"
+      TOGGLE Off
+      UI_LABEL "ASCALE index"
+   }
+}
+
+
+
