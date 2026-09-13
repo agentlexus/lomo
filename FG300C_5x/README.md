@@ -127,9 +127,17 @@ MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
 
 ## Режимы обработки (`PB_CMD_m50_m52_unlock`)
 
-1. Лок-режим (событие `Interpolation_lock`) — `M52` + lock-комментарий, `TRAFOOF`.
-2. Непрерывная 5-осевая — `M50` + `M52`, `TRAORI`.
-3. 3-осевая / 3+2 — `;AXES LOCKED. 3-AXIS MILLING`, `TRAFOOF`.
+1. Лок-режим (событие `Interpolation_lock`) — `M52` + `;INTERPOLATION LOCK. 4-AXIS
+   MACHINING (TABLE C ROTATION).`, `TRAFOOF`.
+2. Непрерывная 5-осевая — `M50` + `M52`, `;AXES UNLOCKED. CONTINUOUS 5-AXIS
+   MACHINING ON.`, `TRAORI`.
+3. 3+2 (позиционирование через `CYCLE800` / кадр A-C, `mom_siemens_coord_rotation != 0`)
+   — `;3+2 MILLING MODE`, `TRAFOOF`.
+4. Чистая 3-осевая — `;AXES LOCKED. 3-AXIS MILLING`, `TRAFOOF`.
+
+Комментарий режима печатает `PB_CMD__mode_comment` (единое место): он вызывается и
+в Initial-Move-цепочке (через `PB_CMD_m50_m52_unlock`), и в First-Move-цепочке
+(`MOM_first_move`), поэтому режим помечается в каждой операции.
 
 ## Ключевые соглашения
 
@@ -178,6 +186,11 @@ MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
   `USER_DEFINED_EVENTS` CAM-конфига (перечитывается без перезапуска NX), а
   `INCLUDE` в `.def` влияет только на пост-движок; блок события деплоится в
   `ude.cdl` скриптом `working_script/deploy_ude.py`; документация обновлена.
+- 2026-09-13: 3+2 получил собственный комментарий режима — было общее
+  `;AXES LOCKED. 3-AXIS MILLING`, стало `;3+2 MILLING MODE` (условие:
+  `mom_siemens_coord_rotation != 0`, т.е. операция позиционируется CYCLE800 или
+  кадром A-C). Комментарий выводит `PB_CMD__mode_comment`, он же вызывается в
+  First-Move-цепочке, поэтому режим помечается в каждой операции.
 
 ## Примечание
 

@@ -1723,6 +1723,10 @@ proc MOM_first_move { } {
       PB_call_macro CYCLE832_v7
    }
 
+   # Machining-mode comment (lock / 5-axis / 3+2 / 3-axis), same as in the
+   # Initial-Move chain, so every operation is labelled.
+   PB_CMD__mode_comment
+
    MOM_force Once transf
    MOM_do_template traori_trafoof
 
@@ -8732,6 +8736,31 @@ proc PB_CMD_linear_move { } {
 
 
 #=============================================================
+proc PB_CMD__mode_comment { } {
+#=============================================================
+# Output the machining-mode comment of the current operation. Called from the
+# Initial-Move chain (via PB_CMD_m50_m52_unlock) and from the First-Move chain,
+# so every operation is labelled:
+#   interpolation lock -> ;INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C ROTATION).
+#   continuous 5-axis  -> ;AXES UNLOCKED. CONTINUOUS 5-AXIS MACHINING ON.
+#   3+2 (positioned)   -> ;3+2 MILLING MODE
+#   plain 3-axis       -> ;AXES LOCKED. 3-AXIS MILLING
+   global mom_siemens_coord_rotation
+   if { [PB_CMD__lock_mode] } {
+      MOM_output_literal ";INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C ROTATION)."
+   } elseif { [PB_CMD_detect_5axis_tool_path] } {
+      MOM_output_literal ";AXES UNLOCKED. CONTINUOUS 5-AXIS MACHINING ON."
+   } elseif { [info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation != 0 } {
+      # 3+2: the table/detail is positioned by CYCLE800 (or by the A/C rotation
+      # frame) and machining itself runs in 3 axes - the axes stay locked.
+      MOM_output_literal ";3+2 MILLING MODE"
+   } else {
+      MOM_output_literal ";AXES LOCKED. 3-AXIS MILLING"
+   }
+}
+
+
+#=============================================================
 proc PB_CMD_m50_m52_unlock { } {
 #=============================================================
 # Unlocking axes (M50/M52) for continuous 5-axis machining.
@@ -8746,15 +8775,15 @@ proc PB_CMD_m50_m52_unlock { } {
 if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
     # 4-axis machining: table rotation C, axis A locked
     MOM_output_literal "M52 ;(C-axis loose)"
-    MOM_output_literal ";INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C ROTATION)."
+    PB_CMD__mode_comment
 } elseif { [PB_CMD_detect_5axis_tool_path] } {
     # Continuous 5-axis machining
     MOM_output_literal "M50 ;(A-axis loose)"
     MOM_output_literal "M52 ;(C-axis loose)"
-    MOM_output_literal ";AXES UNLOCKED. CONTINUOUS 5-AXIS MACHINING ON."
+    PB_CMD__mode_comment
 } else {
-    # 3-axis or 3+2 machining
-    MOM_output_literal ";AXES LOCKED. 3-AXIS MILLING"
+    # 3-axis or 3+2 machining - the comment tells which one
+    PB_CMD__mode_comment
 }
 }
 
