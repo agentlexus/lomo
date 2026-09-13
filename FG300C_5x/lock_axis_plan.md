@@ -307,3 +307,48 @@ E (дубль M8): УБРАТЬ.
 - дубль M8 и позиция M52 - отдельные задачи (разделы 6.D/6.E).
 ВНИМАНИЕ: post-commit XNLock не откатывать, файл .tcl коммитить через
 git add + commit (не откатывать чтобы не потерять diff). Кодировку не менять!
+========================================================
+11. 2026-09-13. АКТУАЛЬНАЯ РЕАЛИЗАЦИЯ: КАСТОМНОЕ СОБЫТИЕ Interpolation_lock
+========================================================
+Разделы 1–10 выше — предыстория (в т.ч. открытые вопросы, которые уже закрыты).
+Ниже — как лок-режим работает сейчас.
+
+1) Триггер единственный: UDE `Interpolation_lock`
+   (`FG300C_5x/LOMO_FG300C_ude.cdl`; деплой — MACH\resource\user_def_event\
+   LOMO_FG300C.cdl, подключён в LOMO_FG300C.def через INCLUDE).
+   Параметры: command_status (Active/Inactive), lock_axis (Fourth/Off),
+   lock_axis_plane (XYPLAN/NONE), ASCALE_value (d) — это же R1 в УП.
+   Легаси-событие `interpolation_lock` (ude_interpolation_lock Yes/No) удалено.
+
+2) Цепочка в .tcl:
+   MOM_Interpolation_lock (обёртка; ядро диспатчит событие как MOM_<Имя>)
+   -> PB_CMD_MOM_Interpolation_lock (снимок входов: pb_lock_req,
+      pb_lock_axis_req, pb_lock_plane_req, pb_ascale_req)
+   -> PB_CMD__lock_mode (вердикт: Active + fourth + xyplan*, без учёта регистра)
+   -> PB_CMD__lock_mode_apply (публикация в mom_ude_interpolation_lock)
+   -> читатели: PB_CMD_detect_operation_type (TRAFOOF, ROTARY AXES, сохранение
+      дуг), PB_CMD_m50_m52_unlock (M52 + lock-комментарий),
+      PB_CMD_output_initial_move (R1 / ASCALE X=R1 Y=R1),
+      PB_CMD__rotc_arc_handle / PB_CMD__rotc_linear_cut
+      (рабочий круг -> G1 G91 C-360.1 F200 + G90).
+
+3) R1 берётся из PARAM ASCALE_value (mom_ASCALE_value, формат %.3f) и выводится
+   только в лок-режиме; в 3-осевой операции R1/ASCALE отсутствуют.
+
+4) Закрытые пункты прежнего плана:
+   - OQ1/OQ3: дуги подхода/отхода выходят одним кадром G2/G3 (LINEAR снят),
+     рабочий круг гасится в один кадр C-360.1;
+   - OQ2: в лок-режиме TRAFOOF, без RTCP;
+   - раздел 6.F (позиция M52): M52 выводится в Initial Move (не перед Engage) —
+     принято осознанно;
+   - G90 выводится после маркера ;Retract Move (совпадает с эталоном);
+   - дубль M8 устранён.
+
+5) Проверено генерацией (2026-09-13):
+   - interpolation_yes_lock_axis.mpf: R1=1.036, ASCALE X=R1 Y=R1,
+     M52 ;(C-axis loose) + ;INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C
+     ROTATION)., G1 G91 C-360.1 F200, G90;
+   - interpolation_no_lock_axis.mpf (3-осевая): R1/ASCALE/поворота нет,
+     ;AXES LOCKED. 3-AXIS MILLING.
+
+6) Деплой и коммиты — см. README (раздел «Как NX находит пост и события»).
