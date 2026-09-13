@@ -2,7 +2,6 @@ MACHINE  mill
 
 INCLUDE {
          $UGII_CAM_USER_DEF_EVENT_DIR/ude.cdl
-         $UGII_CAM_USER_DEF_EVENT_DIR/LOMO_FG300C.cdl
         }
 
 FORMATTING

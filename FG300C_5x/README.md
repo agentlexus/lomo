@@ -28,29 +28,43 @@ Post Builder), `.cdl` (объявления UDE), `LOMO_FG300C_ude.cdl` (кас�
 | `LOMO_FG300C.def` | Адреса, форматы, шаблоны блоков, `INCLUDE` каталогов UDE |
 | `LOMO_FG300C.pui` | Проект Post Builder: UDE→обработчик, Custom Command |
 | `LOMO_FG300C.cdl` | Объявления UDE для Post Builder |
-| `LOMO_FG300C_ude.cdl` | Кастомные UDE; деплой в `...\user_def_event\LOMO_FG300C.cdl` |
+| `LOMO_FG300C_ude.cdl` | Источник блока кастомного события; деплой — вставка блока в `...\user_def_event\ude.cdl` (`working_script/deploy_ude.py`) |
 | `lock_axis_plan.md` | История работ по лок-режиму (разделы 1–10 — предыстория, раздел 11 — актуально) |
 | `working_script/*.py` | Патч-скрипты правок поста (байтовые, с assert) |
 | `nc/*.mpf`, `raw.cls` | Тестовые УП и CLS для сверки с эталоном |
 
 ## Как NX находит пост и события (важно)
 
-1. Список постов — `MACH\resource\postprocessor\template_post.dat`:
-   `LOMO_FG300C, ${UGII_CAM_POST_DIR}LOMO_FG300C\LOMO_FG300C.tcl, …\LOMO_FG300C.def`.
+Механизмов два, они независимы (проверено на NX 2312):
+
+1. **Постпроцессирование.** Список постов — `MACH\resource\postprocessor\
+   template_post.dat`: `LOMO_FG300C, …\LOMO_FG300C.tcl, …\LOMO_FG300C.def`.
    В рантайме работают **только `.tcl` и `.def`** (+ файлы из `INCLUDE`); `.pui`
-   нужен только Post Builder.
-2. Каталог UDE подключается в `.def` — это и есть «мост» пост → CAM-UDE:
+   нужен только Post Builder. Каталог событий для пост-движка задаётся в `.def`:
 ```
 INCLUDE {
          $UGII_CAM_USER_DEF_EVENT_DIR/ude.cdl
-         $UGII_CAM_USER_DEF_EVENT_DIR/LOMO_FG300C.cdl
         }
 ```
-   `INCLUDE` — список файлов; путь по умолчанию `$UGII_CAM_USER_DEF_EVENT_DIR`
-   (`...\MACH\resource\user_def_event`). Глобальный `ude.cdl` править не нужно:
-   кастомные события живут в `LOMO_FG300C.cdl`. Сам постный `.cdl` в рантайме
-   не читается (это проект Post Builder).
-3. Из этих `.cdl` событие попадает в UI операции и в CLS (`$$UDE: <метка>/...`).
+   (`$UGII_CAM_USER_DEF_EVENT_DIR` = `...\MACH\resource\user_def_event`).
+2. **UI операции (список User Defined Events).** Берётся **не** из `.def`, а из
+   CAM-конфигурации — `MACH\resource\configuration\cam_general.dat` (активный
+   конфиг задаёт переменная `UGII_CAM_CONFIG`), строка:
+```
+USER_DEFINED_EVENTS,${UGII_CAM_USER_DEF_EVENT_DIR}ude.cdl,${UGII_CAM_USER_DEF_EVENT_DIR}ude.tcl
+```
+   то есть UI читает именно `${UGII_CAM_USER_DEF_EVENT_DIR}ude.cdl` (+ `ude.tcl` —
+   библиотека обработчиков событий). Каталог перечитывается на лету: правка
+   `ude.cdl` видна в списке **без перезапуска NX**.
+3. **Правило:** кастомное событие, которое должно быть и в UI, и в
+   постпроцессировании, кладётся **в `ude.cdl`** — файл, который читают оба
+   механизма (это же место рекомендует Siemens в
+   `POSTBUILD\pblib\custom_command\pb_cmd_set_custom_cycle.tcl`).
+   `INCLUDE` отдельного `.cdl` в `.def` на список UI **не влияет** (проверено:
+   событие, подключённое только так, после перезапуска NX в списке отсутствует).
+   В репозитории блок события хранится в `LOMO_FG300C_ude.cdl`, деплой —
+   `python working_script/deploy_ude.py` (идемпотентно вставляет/синхронизирует
+   блок в `ude.cdl` и делает бэкап).
 4. **Диспатч:** ядро вызывает `MOM_<имя события>`, поэтому в `.tcl` обязательна
    обёртка:
 ```tcl
@@ -59,10 +73,16 @@ proc MOM_Interpolation_lock { } {
    PB_CMD_MOM_Interpolation_lock
 }
 ```
-   Без обёртки событие «молчит»: данные в CLS есть, обработчик не вызывается.
-5. Деплой: `.tcl`/`.def` (и `.pui`/`.cdl` — для Post Builder) →
-   `...\postprocessor\LOMO_FG300C\`, `LOMO_FG300C_ude.cdl` →
-   `...\user_def_event\LOMO_FG300C.cdl`.
+   Без обёртки событие «молчит»: данные события попадают в CLS строкой
+   `$$UDE: <метка>/...`, но обработчик не вызывается.
+5. **Если штатные файлы NX трогать нельзя:** сайтовый CAM-конфиг (копия
+   `cam_general.dat` → `cam_lomo.dat` с изменённым `USER_DEFINED_EVENTS`) плюс
+   `UGII_CAM_CONFIG` на него; либо `INCLUDE`-цепочка внутри `ude.cdl`
+   (`MACHINE FANUC` + `INCLUDE {.../LOMO_FG300C.cdl}`). На этой сборке оба
+   варианта не проверялись.
+6. Деплой: `.tcl`/`.def` (и `.pui`/`.cdl` — для Post Builder) →
+   `...\postprocessor\LOMO_FG300C\`; блок кастомного события → `ude.cdl`
+   (`working_script/deploy_ude.py`).
 
 ## Событие Interpolation_lock (вращение стола C)
 
@@ -126,11 +146,16 @@ MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
 
 ## Как добавить новое UDE-событие
 
-1. `LOMO_FG300C_ude.cdl`: `EVENT <Имя> { UI_LABEL "<метка>" CATEGORY MILL DRILL
-   LATHE PARAM <параметр> { TYPE o DEFVAL "..." OPTIONS "..." UI_LABEL "..." } }`.
-2. Развернуть файл в `...\user_def_event\LOMO_FG300C.cdl` (он уже в `INCLUDE`).
-3. `.tcl`: обёртка `proc MOM_<Имя> { } { … }` + обработчик `PB_CMD_MOM_<Имя>`.
-4. Проверка: в CLS появляется строка `$$UDE: <МЕТКА>/...`.
+1. В `LOMO_FG300C_ude.cdl` (репозиторий) добавить блок
+   `EVENT <Имя> { UI_LABEL "<метка>" CATEGORY MILL DRILL LATHE PARAM <параметр>
+   { TYPE o DEFVAL "..." OPTIONS "..." UI_LABEL "..." } }`.
+2. Задеплоить блок в каталог UDE: `python working_script/deploy_ude.py`
+   (вставляет/синхронизирует блок в `${UGII_CAM_USER_DEF_EVENT_DIR}ude.cdl`,
+   делает бэкап). UI подхватит событие сразу, без перезапуска NX.
+3. `.tcl`: обёртка `proc MOM_<Имя> { } { … }` + обработчик `PB_CMD_MOM_<Имя>` —
+   без неё событие не диспатчится.
+4. Проверка: событие есть в списке UDE операции; в CLS есть строка
+   `$$UDE: <МЕТКА>/...`.
 5. `.cdl`/`.pui` поста — по желанию, для консистентности Post Builder.
 
 ## История правок
@@ -147,9 +172,12 @@ MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
   переехал в `FG300C_5x/`.
 - 2026-09-13: кастомное событие `Interpolation_lock` (status / axis / plane /
   ASCALE); `R1` из `ASCALE_value`, `R1`/`ASCALE` — только в нём; обёртка
-  `MOM_Interpolation_lock`; кастомный `.cdl` подключён через `INCLUDE`; фиксы
-  `global` (`M52` + lock-комментарий и реальная очистка в `MOM_end_of_path`);
-  легаси-событие `interpolation_lock` удалено; документация обновлена.
+  `MOM_Interpolation_lock`; фиксы `global` (`M52` + lock-комментарий и реальная
+  очистка в `MOM_end_of_path`); легаси-событие `interpolation_lock` удалено.
+  Установлено, что список UDE в UI берётся из `ude.cdl` по ключу
+  `USER_DEFINED_EVENTS` CAM-конфига (перечитывается без перезапуска NX), а
+  `INCLUDE` в `.def` влияет только на пост-движок; блок события деплоится в
+  `ude.cdl` скриптом `working_script/deploy_ude.py`; документация обновлена.
 
 ## Примечание
 
