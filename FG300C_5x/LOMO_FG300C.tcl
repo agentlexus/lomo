@@ -350,7 +350,7 @@ proc PB_CMD___log_revisions { } {
   set mom_kin_5th_axis_center_offset(0)         "0.0"
   set mom_kin_5th_axis_center_offset(1)         "0.0"
   set mom_kin_5th_axis_center_offset(2)         "0.0"
-  set mom_kin_5th_axis_direction                "SIGN_DETERMINES_DIRECTION"
+  set mom_kin_5th_axis_direction                "MAGNITUDE_DETERMINES_DIRECTION"
   set mom_kin_5th_axis_incr_switch              "OFF"
   set mom_kin_5th_axis_leader                   "C"
   set mom_kin_5th_axis_limit_action             "Warning"
@@ -12640,6 +12640,7 @@ proc DPP_GE_COOR_ROT { ang_mode rot_angle offset pos } {
       set angle(1) 0.0
       set angle(2) 0.0
    }
+
    return $coord_rot
 }
 
@@ -12746,14 +12747,9 @@ proc DPP_GE_COOR_ROT_AUTO3D { rot_matrix rot_pos } {
    if { [string match "reverse" $::mom_kin_4th_axis_rotation] } {
       set rot_dir_4th 1
    }
-   # C-axis (5th): the rotary-table C solution for the +/-X side approaches
-   # comes out 180 deg off, mapping the approach +X -> -Y -> -Z and flipping
-   # the approach Z sign (Z-200). Use the opposite C direction here so the
-   # rotated POSITION maps +X -> +Y -> +Z (+200). The rotation MATRIX below
-   # uses the raw angle, so CYCLE800 spatial angles are not affected.
-   set rot_dir_5th 1
+   set rot_dir_5th -1
    if { [string match "reverse" $::mom_kin_5th_axis_rotation] } {
-      set rot_dir_5th -1
+      set rot_dir_5th 1
    }
 
 
