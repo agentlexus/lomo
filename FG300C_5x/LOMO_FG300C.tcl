@@ -276,8 +276,8 @@ proc PB_CMD___log_revisions { } {
   set mom_sys_home_pos(2)                       "0"
   set mom_sys_zero                              "0"
   set mom_sys_opskip_block_leader               "/"
-  set mom_sys_seqnum_start                      "10"
-  set mom_sys_seqnum_incr                       "10"
+  set mom_sys_seqnum_start                      "1"
+  set mom_sys_seqnum_incr                       "1"
   set mom_sys_seqnum_freq                       "1"
   set mom_sys_seqnum_max                        "99999999"
   set mom_sys_lathe_x_double                    "1"
@@ -9120,6 +9120,9 @@ proc PB_CMD_output_end_of_path { } {
    }
 
    MOM_output_literal ";(End of Path)"
+   MOM_set_seq_off
+   MOM_output_literal " "
+   MOM_set_seq_on
 
    # Remember whether the next operation has a tool change: the 3+2 retract
    # (SUPA G0 Z0.0) must only be emitted when there is NO tool change, because
