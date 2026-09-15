@@ -1697,6 +1697,8 @@ proc MOM_first_move { } {
    PB_CMD_detect_operation_type
    PB_CMD_define_feed_variable_value
 
+   PB_CMD__output_3p2_retract
+
    MOM_do_template g17
 
    MOM_output_literal ";First Move"
@@ -2154,6 +2156,11 @@ proc MOM_start_of_path { } {
 #=============================================================
   global mom_sys_in_operation
    set mom_sys_in_operation 1
+
+   global pb_operation_count pb_3p2_retract_done
+   if { ![info exists pb_operation_count] } { set pb_operation_count 0 }
+   incr pb_operation_count
+   set pb_3p2_retract_done 0
 
   global first_linear_move ; set first_linear_move 0
    TOOL_SET MOM_start_of_path
@@ -8761,6 +8768,45 @@ proc PB_CMD__mode_comment { } {
 
 
 #=============================================================
+proc PB_CMD__is_3p2 { } {
+#=============================================================
+# Return 1 if the current operation is a positioned 3+2 operation
+# (CYCLE800 / A-C rotation frame), 0 otherwise. Same condition as the
+# 3+2 branch in PB_CMD__mode_comment: not the interpolation-lock mode,
+# not continuous 5-axis, and mom_siemens_coord_rotation != 0.
+   global mom_siemens_coord_rotation
+   if { [PB_CMD__lock_mode] } { return 0 }
+   if { [PB_CMD_detect_5axis_tool_path] } { return 0 }
+   if { [info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation != 0 } { return 1 }
+   return 0
+}
+
+
+#=============================================================
+proc PB_CMD__output_3p2_retract { } {
+#=============================================================
+# Retract Z to the machine reference point (SUPA G0 Z0.0) right before a
+# 3+2 operation, so the tool clears the part before the table is swivelled
+# by CYCLE800. Emitted only when:
+#   - this is not the first operation in the program;
+#   - no tool change happened right before this operation (a tool change
+#     already retracts to the reference point);
+#   - the current operation really is 3+2.
+# pb_3p2_retract_done guards against the First-Move and Initial-Move chains
+# emitting the retract twice for the same operation.
+   global pb_operation_count pb_3p2_retract_done pb_next_oper_has_tool_change
+   if { ![info exists pb_operation_count] || $pb_operation_count <= 1 } { return }
+   if { [info exists pb_3p2_retract_done] && $pb_3p2_retract_done } { return }
+   if { [info exists pb_next_oper_has_tool_change] && $pb_next_oper_has_tool_change } { return }
+   if { ![PB_CMD__is_3p2] } { return }
+   set pb_3p2_retract_done 1
+   MOM_suppress Once D
+   MOM_force Once Text G_motion
+   MOM_do_template tool_change_return_home_Z
+}
+
+
+#=============================================================
 proc PB_CMD_m50_m52_unlock { } {
 #=============================================================
 # Unlocking axes (M50/M52) for continuous 5-axis machining.
@@ -9056,6 +9102,11 @@ proc PB_CMD_output_end_of_path { } {
       MOM_do_template trafoof
    }
 
+   # Close CYCLE800 (reset the 3+2 swivel frame) when the operation used it
+   if { [PB_CMD__check_block_reset_cycle800] } {
+      MOM_do_template reset_cycle800
+   }
+
    # Switch CYCLE832 off
    if { [PB_CMD__check_block_reset_cycle832] } {
       MOM_do_template reset_cycle832
@@ -9069,6 +9120,15 @@ proc PB_CMD_output_end_of_path { } {
    }
 
    MOM_output_literal ";(End of Path)"
+
+   # Remember whether the next operation has a tool change: the 3+2 retract
+   # (SUPA G0 Z0.0) must only be emitted when there is NO tool change, because
+   # a tool change already retracts to the reference point.
+   global mom_next_oper_has_tool_change pb_next_oper_has_tool_change
+   set pb_next_oper_has_tool_change 0
+   if { [info exists mom_next_oper_has_tool_change] && $mom_next_oper_has_tool_change == "YES" } {
+      set pb_next_oper_has_tool_change 1
+   }
 
    PB_CMD_reset_control_mode
    PB_CMD_end_of_extcall_operation
@@ -9283,6 +9343,8 @@ proc PB_CMD_output_initial_move { } {
 #     CYCLE800(...)
 # Called from the Initial Move event.
   global mom_programmed_feed_rate
+
+   PB_CMD__output_3p2_retract
 
    MOM_do_template g17
 
@@ -12684,9 +12746,14 @@ proc DPP_GE_COOR_ROT_AUTO3D { rot_matrix rot_pos } {
    if { [string match "reverse" $::mom_kin_4th_axis_rotation] } {
       set rot_dir_4th 1
    }
-   set rot_dir_5th -1
+   # C-axis (5th): the rotary-table C solution for the +/-X side approaches
+   # comes out 180 deg off, mapping the approach +X -> -Y -> -Z and flipping
+   # the approach Z sign (Z-200). Use the opposite C direction here so the
+   # rotated POSITION maps +X -> +Y -> +Z (+200). The rotation MATRIX below
+   # uses the raw angle, so CYCLE800 spatial angles are not affected.
+   set rot_dir_5th 1
    if { [string match "reverse" $::mom_kin_5th_axis_rotation] } {
-      set rot_dir_5th 1
+      set rot_dir_5th -1
    }
 
 
