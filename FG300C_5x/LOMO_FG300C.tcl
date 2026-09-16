@@ -1966,6 +1966,30 @@ proc MOM_Interpolation_lock { } {
 
 
 #=============================================================
+proc MOM_Automatic_doors { } {
+#=============================================================
+# UDE "Automatic doors" - door control (see PB_CMD_MOM_Automatic_doors).
+   global mom_action
+   PB_CMD_MOM_Automatic_doors
+}
+
+
+#=============================================================
+proc PB_CMD_MOM_Automatic_doors { } {
+#=============================================================
+# UDE "Automatic doors" - snapshot the requested door action:
+#   action "open" -> pb_doors_open_end (M57 at program end, after all SUPA)
+   global mom_action pb_doors_open_end
+   if { [info exists mom_action] } {
+      set door_action [string tolower $mom_action]
+      if { $door_action == "open" } {
+         set pb_doors_open_end 1
+      }
+   }
+}
+
+
+#=============================================================
 proc MOM_nurbs_move { } {
 #=============================================================
    PB_CMD_nurbs_spline
@@ -9183,6 +9207,12 @@ proc PB_CMD_output_end_of_program { } {
    MOM_force Once Text G_motion fourth_axis
    MOM_do_template tool_change_return_home_AC
 
+   # Automatic doors: open (M57) at the very end, after all SUPA
+   global pb_doors_open_end
+   if { [info exists pb_doors_open_end] && $pb_doors_open_end } {
+      MOM_output_literal "M57"
+   }
+
    MOM_do_template end_of_program
    PB_CMD_end_of_program
    MOM_set_seq_off
@@ -9581,6 +9611,10 @@ proc PB_CMD_output_start_of_path { } {
    # once at the program start, not on every operation.
    if { ![info exists pb_home_return_flag] } {
       set pb_home_return_flag 1
+
+      # Automatic doors: close (M58) before the SUPA home return
+      MOM_output_literal "M58"
+
       MOM_do_template trafoof
       MOM_do_template reset_cycle800
 

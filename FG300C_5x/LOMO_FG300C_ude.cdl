@@ -34,5 +34,18 @@ EVENT Interpolation_lock
    }
 }
 
+EVENT Automatic_doors
+{
+   UI_LABEL "Automatic doors"
+   CATEGORY MILL DRILL LATHE
+   PARAM action
+   {
+      TYPE o
+      DEFVAL "open"
+      OPTIONS "open"
+      UI_LABEL "Action"
+   }
+}
+
 
 
