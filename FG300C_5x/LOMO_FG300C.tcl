@@ -9211,6 +9211,7 @@ proc PB_CMD_output_end_of_program { } {
    global pb_doors_open_end
    if { [info exists pb_doors_open_end] && $pb_doors_open_end } {
       MOM_output_literal "M57"
+	  MOM_output_literal ";(Automatic doors: opened)"
    }
 
    MOM_do_template end_of_program
@@ -9614,6 +9615,7 @@ proc PB_CMD_output_start_of_path { } {
 
       # Automatic doors: close (M58) before the SUPA home return
       MOM_output_literal "M58"
+	  MOM_output_literal ";(Automatic doors: closed)"
 
       MOM_do_template trafoof
       MOM_do_template reset_cycle800
