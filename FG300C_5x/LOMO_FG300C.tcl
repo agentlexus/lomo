@@ -1115,42 +1115,36 @@ proc PB_CMD__rotc_turn_block { } {
 
 proc PB_CMD__rotc_arc_handle { } {
 #=============================================================
+# Interpolation-lock (rotary-table C) arc handling:
+#   - the engage arc sets the turn sign (CCLW -> + internal, CLW -> - external);
+#   - the working circle (CUT arc) is replaced by the single rotary C turn.
   global mom_ude_interpolation_lock
   if { ![info exists mom_ude_interpolation_lock] || $mom_ude_interpolation_lock != "Yes" } {
      return 0
   }
 
-  global mom_pos_arc_center mom_arc_radius mom_arc_direction
-  global pb_lock_arc_active pb_lock_arc_radius pb_lock_turn_sign
+  global mom_arc_direction mom_motion_type
+  global pb_lock_turn_sign pb_lock_turn_done
+  if { ![info exists pb_lock_turn_done] } { set pb_lock_turn_done 0 }
 
-  set cx [expr $mom_pos_arc_center(0)]
-  set cy [expr $mom_pos_arc_center(1)]
-  set tol 0.5
-
-  if { ![info exists pb_lock_arc_active] } { set pb_lock_arc_active 0 }
-
-  if { [expr abs($cx)] < $tol && [expr abs($cy)] < $tol } {
-     # Working arc whose center is on the C axis (0,0): the whole circle is the
-     # rotary-table pass. Output the single C rotation once on its first arc and
-     # swallow all remaining arcs of the circle.
-     if { $pb_lock_arc_active == 0 } {
-        set pb_lock_arc_active 1
-        set pb_lock_arc_radius $mom_arc_radius
-        set pb_lock_turn_sign -1
-        if { [info exists mom_arc_direction] && $mom_arc_direction == "CCLW" } {
-           set pb_lock_turn_sign 1
-        }
-        PB_CMD__rotc_turn_block
-     }
-     return 1
+  if { [info exists mom_arc_direction] } {
+     if { $mom_arc_direction == "CCLW" } { set pb_lock_turn_sign 1 } else { set pb_lock_turn_sign -1 }
   }
 
-  # Arc with a different center (engage approach / retract departure).
-  # The literal C=IC(...) block does not update the post motion-G state,
-  # so force G2/G3 so the retract arc starts with a circular code.
-  if { $pb_lock_arc_active == 1 } {
+  if { [info exists mom_motion_type] } {
+     if { $mom_motion_type == "CUT" || $mom_motion_type == "FIRSTCUT" || $mom_motion_type == "STEPOVER" } {
+        if { $pb_lock_turn_done == 0 } {
+           set pb_lock_turn_done 1
+           PB_CMD__rotc_turn_block
+        }
+        return 1
+     }
+  }
+
+  # The retract arc after the rotation must restart with G2/G3 (the literal
+  # G1 C=IC(...) block does not update the post motion-G state).
+  if { $pb_lock_turn_done == 1 } {
      MOM_force Once G_motion
-     set pb_lock_arc_active 0
   }
   return 0
 }
@@ -1211,86 +1205,27 @@ proc PB_CMD__lock_mode_apply { } {
 #=============================================================
 proc PB_CMD__rotc_linear_cut { } {
 #=============================================================
-# Interpolation-lock (rotary-table C) mode.
-# The working contour arrives as many SMALL LINEAR XY moves that trace a full
-# circle about the C-axis (centre approx (0,0)) at a nearly constant radius and
-# at constant Z.  We replace that whole XY run-around with a single rotary C move:
-#     G1 C=IC(360.1) F200
-# (no G90 needed - C=IC keeps the absolute G90 mode).
-# Returns 1 if the current linear move was consumed (rotary output emitted, XY
-# linear suppressed); returns 0 if the move should be output normally.
+# Interpolation-lock (rotary-table C) linear handling:
+# the working circle (CUT linear moves) is replaced by the single rotary C turn.
    global mom_ude_interpolation_lock
    if { ![info exists mom_ude_interpolation_lock] || $mom_ude_interpolation_lock != "Yes" } {
       return 0
    }
-   global mom_mcs_goto
-   if { ![info exists mom_mcs_goto] } {
-      return 0
-   }
 
-   global pb_lock_cut_active pb_lock_cut_r pb_lock_prev_r pb_lock_prev_z
-   global pb_lock_prev_x pb_lock_prev_y pb_lock_turn_sign
+   global mom_motion_type
+   global pb_lock_turn_done
+   if { ![info exists pb_lock_turn_done] } { set pb_lock_turn_done 0 }
 
-   if { ![info exists pb_lock_cut_active] } { set pb_lock_cut_active 0 }
-   if { ![info exists pb_lock_prev_r] }   { set pb_lock_prev_r  -1.0 }
-   if { ![info exists pb_lock_prev_z] }   { set pb_lock_prev_z  0.0 }
-   if { ![info exists pb_lock_prev_x] }   { set pb_lock_prev_x  0.0 }
-   if { ![info exists pb_lock_prev_y] }   { set pb_lock_prev_y  0.0 }
-
-   set x [expr $mom_mcs_goto(0)]
-   set y [expr $mom_mcs_goto(1)]
-   set z [expr $mom_mcs_goto(2)]
-   if { [catch {set r [expr hypot($x,$y)]}] } { set r 0.0 }
-   set dZ [expr abs($z - $pb_lock_prev_z)]
-
-   if { $pb_lock_cut_active == 0 } {
-      # --- Not yet in a flat full-circle pass on C axis ---
-      if { $pb_lock_prev_r >= 0 && $dZ < 0.001 && $r > 0.5 } {
-         if { [expr abs($r - $pb_lock_prev_r)] < 0.2 } {
-            # Just entered a flat run at (almost) constant radius around (0,0)
-            set pb_lock_cut_active 1
-            set pb_lock_cut_r $r
-            set pb_lock_turn_sign -1
-            if { [expr $pb_lock_prev_x * $y - $pb_lock_prev_y * $x] > 0 } {
-               set pb_lock_turn_sign 1
-            }
-            PB_CMD_output_comment ";Cutting"
+   if { [info exists mom_motion_type] } {
+      if { $mom_motion_type == "CUT" || $mom_motion_type == "FIRSTCUT" || $mom_motion_type == "STEPOVER" } {
+         if { $pb_lock_turn_done == 0 } {
+            set pb_lock_turn_done 1
             PB_CMD__rotc_turn_block
          }
-      }
-      set pb_lock_prev_r $r
-      set pb_lock_prev_z $z
-      set pb_lock_prev_x $x
-      set pb_lock_prev_y $y
-      if { $pb_lock_cut_active } { return 1 }
-      return 0
-   } else {
-      # --- Inside the flat full-circle pass ---
-      # A Z change signals the end of the flat rotary cut (helical out).
-      if { $dZ > 0.01 } {
-         set pb_lock_cut_active 0
-         set pb_lock_prev_r $r
-         set pb_lock_prev_z $z
-         set pb_lock_prev_x $x
-         set pb_lock_prev_y $y
-         return 0
-      }
-      # Still on the same flat radius: consume this XY move (table rotates already)
-      if { [expr abs($r - $pb_lock_cut_r)] < 0.8 } {
-         set pb_lock_prev_r $r
-         set pb_lock_prev_z $z
-         set pb_lock_prev_x $x
-         set pb_lock_prev_y $y
          return 1
       }
-      # Left the circle radius -> stop rotary pass
-      set pb_lock_cut_active 0
-      set pb_lock_prev_r $r
-      set pb_lock_prev_z $z
-      set pb_lock_prev_x $x
-      set pb_lock_prev_y $y
-      return 0
    }
+   return 0
 }
 
 proc MOM_circular_move { } {
@@ -6401,14 +6336,14 @@ proc PB_CMD_detect_operation_type { } {
   # table C with TRAFOOF (no RTCP). Axis A stays locked, axis C is unlocked
   # (see PB_CMD_m50_m52_unlock). The mode is decided once per operation, here.
   PB_CMD__lock_mode_apply
-  global mom_ude_interpolation_lock mom_siemens_ori_def pb_lock_arc_active
+  global mom_ude_interpolation_lock mom_siemens_ori_def pb_lock_turn_done
   if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
      set dpp_ge(toolpath_axis_num) 5
      # Interpolation-lock runs with TRAFOOF (no RTCP): table rotates,
      # tool stays stationary on the boss side.
      set mom_siemens_5axis_mode "TRAFOOF"
      set mom_siemens_ori_def "ROTARY AXES" ; # table rotation -> axis angles (C), not vector
-     set pb_lock_arc_active 0
+     set pb_lock_turn_done 0
   }
 
 
