@@ -1241,7 +1241,7 @@ proc PB_CMD__rotc_linear_cut { } {
             # Just entered a flat run at (almost) constant radius around (0,0)
             set pb_lock_cut_active 1
             set pb_lock_cut_r $r
-            MOM_output_literal ";Cutting"
+            PB_CMD_output_comment ";Cutting"
             PB_CMD__rotc_turn_block
          }
       }
@@ -1701,7 +1701,7 @@ proc MOM_first_move { } {
 
    MOM_do_template g17
 
-   MOM_output_literal ";First Move"
+   PB_CMD_output_comment ";First Move"
 
    # First-Move chain mirrors the reference Initial-Move chain
    # (PB_CMD_output_initial_move): G54 -> G0 A0.0 C=DC(0.0) ->
@@ -1986,6 +1986,16 @@ proc PB_CMD_MOM_Automatic_doors { } {
          set pb_doors_open_end 1
       }
    }
+}
+
+
+#=============================================================
+proc PB_CMD_output_comment { text } {
+#=============================================================
+# Output a comment/literal without a sequence number.
+   set seq_state [MOM_set_seq_off]
+   MOM_output_literal $text
+   if { [string match "on" $seq_state] } { MOM_set_seq_on }
 }
 
 
@@ -2543,7 +2553,7 @@ proc PB_auto_tool_change { } {
       set mom_next_tool_number $mom_tool_number
    }
 
-   MOM_output_literal ";Tool Change"
+   PB_CMD_output_comment ";Tool Change"
 
    MOM_force Once M_coolant
    MOM_do_template coolant_off
@@ -2810,15 +2820,15 @@ return
   }
 
   MOM_set_seq_off
-  MOM_output_literal ";HEADER-START"
-  MOM_output_literal ";NODENAME=$mom_dnc_machine_name"
-  MOM_output_literal ";NCDATANAME=$mom_dnc_program_name"
-  MOM_output_literal ";NCDATATYPE=$mom_dnc_data_type"
-  MOM_output_literal ";VERSION=$mom_dnc_version_number"
-  MOM_output_literal ";RELEASEID=$mom_dnc_release_number"
-  MOM_output_literal ";DEVELNAME=$mom_dnc_user_name"
-  MOM_output_literal ";HEADER-END"
-  MOM_output_literal ";NC-START"
+  PB_CMD_output_comment ";HEADER-START"
+  PB_CMD_output_comment ";NODENAME=$mom_dnc_machine_name"
+  PB_CMD_output_comment ";NCDATANAME=$mom_dnc_program_name"
+  PB_CMD_output_comment ";NCDATATYPE=$mom_dnc_data_type"
+  PB_CMD_output_comment ";VERSION=$mom_dnc_version_number"
+  PB_CMD_output_comment ";RELEASEID=$mom_dnc_release_number"
+  PB_CMD_output_comment ";DEVELNAME=$mom_dnc_user_name"
+  PB_CMD_output_comment ";HEADER-END"
+  PB_CMD_output_comment ";NC-START"
   MOM_output_literal "%"
   MOM_set_seq_on
 }
@@ -3050,7 +3060,7 @@ return
 return
     }
     MOM_set_seq_off
-    MOM_output_literal ";Main program"
+    PB_CMD_output_comment ";Main program"
     MOM_set_seq_on
     MOM_close_output_file $ptp_file_name
   }
@@ -6186,9 +6196,9 @@ proc PB_CMD_define_feed_variable_value { } {
 
   if { [info exists mom_siemens_feed_definition] && $mom_siemens_feed_definition == "ON" } {
      PB_CMD_get_feed_value
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
      MOM_output_literal "_F_CUTTING=$mom_siemens_feed_value(cut) _F_ENGAGE=$mom_siemens_feed_value(engage) _F_RETRACT=$mom_siemens_feed_value(retract)"
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
   }
 }
 
@@ -8784,15 +8794,15 @@ proc PB_CMD__mode_comment { } {
 #   plain 3-axis       -> ;AXES LOCKED. 3-AXIS MILLING
    global mom_siemens_coord_rotation
    if { [PB_CMD__lock_mode] } {
-      MOM_output_literal ";INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C ROTATION)."
+      PB_CMD_output_comment ";INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C ROTATION)."
    } elseif { [PB_CMD_detect_5axis_tool_path] } {
-      MOM_output_literal ";AXES UNLOCKED. CONTINUOUS 5-AXIS MACHINING ON."
+      PB_CMD_output_comment ";AXES UNLOCKED. CONTINUOUS 5-AXIS MACHINING ON."
    } elseif { [info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation != 0 } {
       # 3+2: the table/detail is positioned by CYCLE800 (or by the A/C rotation
       # frame) and machining itself runs in 3 axes - the axes stay locked.
-      MOM_output_literal ";3+2 MILLING MODE"
+      PB_CMD_output_comment ";3+2 MILLING MODE"
    } else {
-      MOM_output_literal ";AXES LOCKED. 3-AXIS MILLING"
+      PB_CMD_output_comment ";AXES LOCKED. 3-AXIS MILLING"
    }
 }
 
@@ -9149,7 +9159,7 @@ proc PB_CMD_output_end_of_path { } {
       MOM_do_template tool_change_return_home_Z
    }
 
-   MOM_output_literal ";(End of Path)"
+   PB_CMD_output_comment ";(End of Path)"
    MOM_set_seq_off
    MOM_output_literal " "
    MOM_set_seq_on
@@ -9211,13 +9221,13 @@ proc PB_CMD_output_end_of_program { } {
    global pb_doors_open_end
    if { [info exists pb_doors_open_end] && $pb_doors_open_end } {
       MOM_output_literal "M57"
-	  MOM_output_literal ";(Automatic doors: opened)"
+	  PB_CMD_output_comment ";(Automatic doors: opened)"
    }
 
    MOM_do_template end_of_program
    PB_CMD_end_of_program
    MOM_set_seq_off
-   MOM_output_literal ";(End of Program)"
+   PB_CMD_output_comment ";(End of Program)"
 }
 
 
@@ -9229,7 +9239,7 @@ proc PB_CMD_output_feed_define { } {
      global mom_siemens_feed_output_block
      global mom_seqnum
      set mom_siemens_feed_output_block [expr int($mom_seqnum)]
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
 }
 
 
@@ -9348,7 +9358,7 @@ proc PB_CMD_output_first_tool { } {
 #     T1                 ;(preselect the next tool)
 #     SUPA G00 X0.0
 #     SUPA G00 Y-400.0 ;(First reference point)
-   MOM_output_literal ";(First Tool)"
+   PB_CMD_output_comment ";(First Tool)"
 
    MOM_do_template stop
 
@@ -9388,7 +9398,7 @@ proc PB_CMD_output_initial_move { } {
 
    MOM_do_template g17
 
-   MOM_output_literal ";(Initial Move)"
+   PB_CMD_output_comment ";(Initial Move)"
 
    # The lock mode is driven by the UDE "Interpolation_lock" only (see
    # PB_CMD__lock_mode). Re-evaluate it here as well: the UDE event may be
@@ -9469,7 +9479,7 @@ return
       "STEPOVER" -
       "CUT" {
          if { ![string match "FIRSTCUT" $mom_siemens_pre_motion] && ![string match "CUT" $mom_siemens_pre_motion] && ![string match "STEPOVER" $mom_siemens_pre_motion] } {
-            MOM_output_literal ";Cutting"
+            PB_CMD_output_comment ";Cutting"
          }
          set mom_siemens_pre_motion $mom_motion_type
       }
@@ -9477,7 +9487,7 @@ return
          set motion_type_first [string toupper [string index $mom_motion_type 0]]
          set motion_type_end [string tolower [string range $mom_motion_type 1 end]]
          set motion_type $motion_type_first$motion_type_end
-         MOM_output_literal ";$motion_type Move"
+         PB_CMD_output_comment ";$motion_type Move"
          set mom_siemens_pre_motion $mom_motion_type
       }
     }
@@ -9490,7 +9500,7 @@ proc PB_CMD_output_operation_comment { } {
 #=============================================================
 # Operation comment in reference format: ;(D15-KC)
   global mom_operation_name
-   MOM_output_literal ";($mom_operation_name)"
+   PB_CMD_output_comment ";($mom_operation_name)"
 }
 
 
@@ -9506,17 +9516,17 @@ proc PB_CMD_output_program_footer { } {
 
    # PC (computer name)
    if {[info exists env(COMPUTERNAME)] && $env(COMPUTERNAME) != ""} {
-      MOM_output_literal ";(PC:$env(COMPUTERNAME))"
+      PB_CMD_output_comment ";(PC:$env(COMPUTERNAME))"
    }
 
    # Part path (mom_part_name already holds the full path including drive)
    if {[info exists mom_part_name] && $mom_part_name != ""} {
-      MOM_output_literal ";($mom_part_name)"
+      PB_CMD_output_comment ";($mom_part_name)"
    }
 
    # Path to the output NC
    if {[info exists mom_dnc_program_name] && $mom_dnc_program_name != ""} {
-      MOM_output_literal ";($mom_dnc_program_name)"
+      PB_CMD_output_comment ";($mom_dnc_program_name)"
    }
 }
 
@@ -9541,7 +9551,7 @@ proc PB_CMD_output_program_header { } {
    } else {
       set equip "SINUMERIK-ONE-G300"
    }
-   MOM_output_literal ";(Equipment:$equip)"
+   PB_CMD_output_comment ";(Equipment:$equip)"
 
    # Founder (NC program author)
    if {[info exists mom_dnc_user_name] && $mom_dnc_user_name != ""} {
@@ -9551,12 +9561,12 @@ proc PB_CMD_output_program_header { } {
    } else {
       set founder "NONE"
    }
-   MOM_output_literal ";(Founder:$founder)"
+   PB_CMD_output_comment ";(Founder:$founder)"
 
    # Date and time in the reference format: ;(2026/08/28 09:57 /5)
    if {[info exists mom_date] && $mom_date != ""} {
       set fmtdt [clock format [clock scan $mom_date] -format "%Y/%m/%d %H:%M"]
-      MOM_output_literal ";( $fmtdt /1)"
+      PB_CMD_output_comment ";( $fmtdt /1)"
    }
 
    # NC name (output NC file name)
@@ -9566,12 +9576,12 @@ proc PB_CMD_output_program_header { } {
    } elseif {[info exists mom_oper_program] && $mom_oper_program != ""} {
       set ncname [file tail $mom_oper_program]
    }
-   MOM_output_literal ";(NC name:$ncname)"
+   PB_CMD_output_comment ";(NC name:$ncname)"
 
    # Machine time (minutes, one digit)
    if {[info exists mom_machine_time] && $mom_machine_time != ""} {
       set mtime [format "%.1f" $mom_machine_time]
-      MOM_output_literal ";(Machine time: $mtime MIN)"
+      PB_CMD_output_comment ";(Machine time: $mtime MIN)"
    }
 }
 
@@ -9615,7 +9625,7 @@ proc PB_CMD_output_start_of_path { } {
 
       # Automatic doors: close (M58) before the SUPA home return
       MOM_output_literal "M58"
-	  MOM_output_literal ";(Automatic doors: closed)"
+	  PB_CMD_output_comment ";(Automatic doors: closed)"
 
       MOM_do_template trafoof
       MOM_do_template reset_cycle800
@@ -9633,7 +9643,7 @@ proc PB_CMD_output_start_of_path { } {
 
    }
 
-   MOM_output_literal ";(start of Path)"
+   PB_CMD_output_comment ";(start of Path)"
 
    # _camtolerance from CAM (intol + outtol) with a leading zero (0.06, not .06)
    if { [info exists mom_inside_outside_tolerances(0)] && [info exists mom_inside_outside_tolerances(1)] } {
@@ -9641,11 +9651,11 @@ proc PB_CMD_output_start_of_path { } {
       MOM_output_literal "_camtolerance=[PB_CMD__format_cam_tolerance $cam_tolerance_total]"
    }
 
-   MOM_output_literal "; "
+   PB_CMD_output_comment "; "
 
    PB_CMD_output_operation_comment
 
-   MOM_output_literal "; "
+   PB_CMD_output_comment "; "
    PB_CMD_start_of_operation_force_addresses
 }
 
@@ -9665,30 +9675,30 @@ proc PB_CMD_output_start_path { } {
   global mom_inside_outside_tolerances
   global mom_stock_part
 
-  MOM_output_literal ";"
+  PB_CMD_output_comment ";"
 
   if {[info exists mom_oper_method]} {
-     MOM_output_literal ";TECHNOLOGY: $mom_oper_method"
+     PB_CMD_output_comment ";TECHNOLOGY: $mom_oper_method"
   }
 
   if {[info exists mom_tool_name]} {
-     MOM_output_literal ";TOOL NAME : $mom_tool_name"
+     PB_CMD_output_comment ";TOOL NAME : $mom_tool_name"
   }
 
   if {[info exists mom_tool_type]} {
-     MOM_output_literal ";TOOL TYPE : $mom_tool_type"
+     PB_CMD_output_comment ";TOOL TYPE : $mom_tool_type"
   }
 
   if {[info exists mom_tool_diameter]} {
-     MOM_output_literal ";TOOL DIAMETER     : [format "%.6f" $mom_tool_diameter]"
+     PB_CMD_output_comment ";TOOL DIAMETER     : [format "%.6f" $mom_tool_diameter]"
   }
 
   if {[info exists mom_tool_length]} {
-     MOM_output_literal ";TOOL LENGTH       : [format "%.6f" $mom_tool_length]"
+     PB_CMD_output_comment ";TOOL LENGTH       : [format "%.6f" $mom_tool_length]"
   }
 
   if {[info exists mom_tool_corner1_radius]} {
-     MOM_output_literal ";TOOL CORNER RADIUS: [format "%.6f" $mom_tool_corner1_radius]"
+     PB_CMD_output_comment ";TOOL CORNER RADIUS: [format "%.6f" $mom_tool_corner1_radius]"
   }
 
   if {[info exists mom_inside_outside_tolerances] && [info exists mom_stock_part]} {
@@ -9697,10 +9707,10 @@ proc PB_CMD_output_start_path { } {
      set outtol [format "%.6f" $mom_inside_outside_tolerances(1)]
      set stock [format "%.6f" $mom_stock_part]
 
-     MOM_output_literal ";"
-     MOM_output_literal ";Intol     : $intol"
-     MOM_output_literal ";Outtol    : $outtol"
-     MOM_output_literal ";Stock     : $stock"
+     PB_CMD_output_comment ";"
+     PB_CMD_output_comment ";Intol     : $intol"
+     PB_CMD_output_comment ";Outtol    : $outtol"
+     PB_CMD_output_comment ";Stock     : $stock"
   }
 
 }
@@ -9718,14 +9728,14 @@ proc PB_CMD_output_start_program { } {
 
   if { ![info exists start_output_flag] || $start_output_flag == 0 } {
      set start_output_flag 1
-     MOM_output_literal ";(Start of Program)"
+     PB_CMD_output_comment ";(Start of Program)"
     # MOM_output_literal ";"
     # MOM_output_literal ";PART NAME   :$mom_part_name"
     # MOM_output_literal ";DATE TIME   :$mom_date"
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
      MOM_output_literal "DEF REAL _camtolerance"
     # MOM_output_literal "DEF REAL _F_CUTTING, _F_ENGAGE, _F_RETRACT"
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
      MOM_force Once G_cutcom G_plane G F_control G_stopping G_feed G_unit G_mode
      MOM_do_template start_of_program
   }
