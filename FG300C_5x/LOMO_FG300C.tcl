@@ -1116,7 +1116,7 @@ proc PB_CMD__rotc_turn_block { } {
 proc PB_CMD__rotc_arc_handle { } {
 #=============================================================
 # Interpolation-lock (rotary-table C) arc handling:
-#   - the engage arc sets the turn sign (CCLW -> + internal, CLW -> - external);
+#   - the CUT arc direction sets the turn sign (CCLW -> + internal, CLW -> - external);
 #   - the working circle (CUT arc) is replaced by the single rotary C turn.
   global mom_ude_interpolation_lock
   if { ![info exists mom_ude_interpolation_lock] || $mom_ude_interpolation_lock != "Yes" } {

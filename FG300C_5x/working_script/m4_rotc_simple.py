@@ -56,7 +56,7 @@ new = CR.join([
     b'proc PB_CMD__rotc_arc_handle { } {',
     b'#=============================================================',
     b'# Interpolation-lock (rotary-table C) arc handling:',
-    b'#   - the engage arc sets the turn sign (CCLW -> + internal, CLW -> - external);',
+    b'#   - the CUT arc direction sets the turn sign (CCLW -> + internal, CLW -> - external);',
     b'#   - the working circle (CUT arc) is replaced by the single rotary C turn.',
     b'  global mom_ude_interpolation_lock',
     b'  if { ![info exists mom_ude_interpolation_lock] || $mom_ude_interpolation_lock != "Yes" } {',
