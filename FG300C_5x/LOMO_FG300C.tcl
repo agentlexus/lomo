@@ -4258,6 +4258,12 @@ proc PB_CMD__check_block_rotary { } {
         CATCH_WARNING "$mom_operation_name:A3B3C3 should work with TRAORI mode, change to rotary output"
      }
 
+     # 3+2 (SWIVELING): CYCLE800 positions the table (A and C), so the rotary
+     # axes must not be output again in the motion block.
+     if { [info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation != 0 && [string match "SWIVELING" $mom_siemens_5axis_mode] } {
+        MOM_suppress Once fourth_axis fifth_axis
+     }
+
  return 1
   } else {
      if {[info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation == 2} {
