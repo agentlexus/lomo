@@ -207,6 +207,16 @@ MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
   ветку решения (сдвиг 180° в C) для оси инструмента +X. Установлено
   MAGNITUDE_DETERMINES_DIRECTION (mom_kin_5th_axis_direction).
 
+- 2026-09-17: смена инструмента выводится для каждого инструмента, а не только
+  для первого. Причина: в `PB_auto_tool_change` флаг `mom_sys_first_tool_handled`
+  гасил смену на второй и последующие инструменты (`MOM_first_tool` ведёт их в
+  `MOM_tool_change`, а дублирующего `MOM_tool_change` для первого инструмента NX
+  не выдаёт, поэтому флаг не сбрасывался). Заменено проверкой по номеру
+  инструмента `pb_last_tool_change_number`; диспатч `MOM_tool_change` сделан
+  полным (`default`/`else` -> `PB_auto_tool_change`). Раньше вторая секция
+  (PLANAR_DEBURRING) обрабатывалась предыдущим инструментом (T3 вместо T6) без
+  `M9`/`M5`/`M8`/`M3`.
+
 ## Примечание
 
 Автопуш-хук (`.git/hooks/post-commit`) в репозитории не хранится: в текущем клоне

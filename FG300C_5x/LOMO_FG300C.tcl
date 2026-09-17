@@ -2434,13 +2434,18 @@ proc MOM_tool_change { } {
 
    if { [info exists mom_tool_change_type] } {
       switch $mom_tool_change_type {
-         MANUAL { PB_manual_tool_change }
-         AUTO   { PB_auto_tool_change }
+         MANUAL  { PB_manual_tool_change }
+         AUTO    { PB_auto_tool_change }
+         default { PB_auto_tool_change }
       }
    } elseif { [info exists mom_manual_tool_change] } {
       if { ![string compare $mom_manual_tool_change "TRUE"] } {
          PB_manual_tool_change
+      } else {
+         PB_auto_tool_change
       }
+   } else {
+      PB_auto_tool_change
    }
 }
 
@@ -2493,14 +2498,19 @@ proc PB_approach_move { } {
 proc PB_auto_tool_change { } {
 #=============================================================
    global mom_tool_number mom_next_tool_number
-   global mom_sys_first_tool_handled
+   global pb_last_tool_change_number
 
-   # After the first change (MOM_first_tool -> PB_CMD_output_first_tool)
-   # Post Builder additionally calls MOM_tool_change.
-   # If the first tool was already fully output, skip the repeat.
-   if {[info exists mom_sys_first_tool_handled] && $mom_sys_first_tool_handled == 1} {
-      set mom_sys_first_tool_handled 0
+   # The first tool block is emitted by PB_CMD_output_first_tool
+   # (MOM_first_tool). Skip only a repeated change for the SAME tool:
+   # a change to another tool must always be output in full, otherwise
+   # the operation would be machined with the previous tool.
+   if { [info exists mom_tool_number] && [info exists pb_last_tool_change_number] \
+        && $pb_last_tool_change_number == $mom_tool_number } {
       return
+   }
+
+   if { [info exists mom_tool_number] } {
+      set pb_last_tool_change_number $mom_tool_number
    }
 
    if { ![info exists mom_next_tool_number] } {
@@ -9312,6 +9322,14 @@ proc PB_CMD_output_first_tool { } {
 #     T1                 ;(preselect the next tool)
 #     SUPA G00 X0.0
 #     SUPA G00 Y-400.0 ;(First reference point)
+   global mom_tool_number pb_last_tool_change_number
+
+   # Remember which tool this first-tool block belongs to: a repeated
+   # MOM_tool_change for the same tool must not be output twice.
+   if { [info exists mom_tool_number] } {
+      set pb_last_tool_change_number $mom_tool_number
+   }
+
    PB_CMD_output_comment ";(First Tool)"
 
    MOM_do_template stop
