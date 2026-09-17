@@ -8,10 +8,10 @@ FORMATTING
 {
   WORD_SEPARATOR " "
   END_OF_LINE ""
-  SEQUENCE sequence_number 10  10 1 99999999
+  SEQUENCE sequence_number 1  1 1 99999999
 
 ################ FORMAT DECLARATIONS #################
-  FORMAT AbsCoord "&__5.3_"
+  FORMAT AbsCoord "&__5.4_"
   FORMAT AbsCoord_in "&__5.6_"
   FORMAT AbsCoord_less_in "&__5.4_"
   FORMAT AbsCoord_less_mm "&__5.3_"
@@ -176,8 +176,8 @@ FORMATTING
   {
       FORMAT      AbsCoord
       FORCE       off
-      MAX         99999.999 Truncate
-      MIN         -99999.999 Truncate
+      MAX         99999.9999 Truncate
+      MIN         -99999.9999 Truncate
       LEADER      [$mom_sys_leader(X)]
       ZERO_FORMAT Zero_real
   }
@@ -186,7 +186,7 @@ FORMATTING
   {
       FORMAT      Coordinate
       FORCE       always
-      MAX         999999.999 Truncate
+      MAX         0 Truncate
       MIN         -999999.999 Truncate
       LEADER      "_X_HOME="
       ZERO_FORMAT Zero_real
@@ -196,8 +196,8 @@ FORMATTING
   {
       FORMAT      AbsCoord
       FORCE       off
-      MAX         99999.999 Truncate
-      MIN         -99999.999 Truncate
+      MAX         99999.9999 Truncate
+      MIN         -99999.9999 Truncate
       LEADER      [$mom_sys_leader(Y)]
       ZERO_FORMAT Zero_real
   }
@@ -206,7 +206,7 @@ FORMATTING
   {
       FORMAT      Coordinate
       FORCE       always
-      MAX         999999.999 Truncate
+      MAX         0 Truncate
       MIN         -999999.999 Truncate
       LEADER      "_Y_HOME="
       ZERO_FORMAT Zero_real
@@ -216,8 +216,8 @@ FORMATTING
   {
       FORMAT      AbsCoord
       FORCE       off
-      MAX         99999.999 Truncate
-      MIN         -99999.999 Truncate
+      MAX         99999.9999 Truncate
+      MIN         -99999.9999 Truncate
       LEADER      [$mom_sys_leader(Z)]
       ZERO_FORMAT Zero_real
   }
@@ -226,7 +226,7 @@ FORMATTING
   {
       FORMAT      Coordinate
       FORCE       always
-      MAX         999999.999 Truncate
+      MAX         0 Truncate
       MIN         -999999.999 Truncate
       LEADER      "_Z_HOME="
       ZERO_FORMAT Zero_real
@@ -271,6 +271,15 @@ FORMATTING
       FORMAT      Rotary
       FORCE       off
       LEADER      [$mom_sys_leader(fifth_axis)]
+      ZERO_FORMAT Zero_real
+  }
+
+  ADDRESS fifth_axis_DC
+  {
+      FORMAT      Rotary
+      FORCE       off
+      LEADER      "C=DC("
+      TRAILER     ")"
       ZERO_FORMAT Zero_real
   }
 
@@ -625,6 +634,13 @@ FORMATTING
       ZERO_FORMAT Zero_real
   }
 
+  ADDRESS ori_coord
+  {
+      FORMAT      String
+      FORCE       always
+      LEADER      ""
+  }
+
   ADDRESS N
   {
       FORMAT      Digit_8
@@ -632,13 +648,6 @@ FORMATTING
       MAX         99999999 Truncate
       LEADER      [$mom_sys_leader(N)]
       ZERO_FORMAT Zero_int
-  }
-
-  ADDRESS ori_coord
-  {
-      FORMAT      String
-      FORCE       always
-      LEADER      ""
   }
 
   ADDRESS ori_inter
@@ -654,13 +663,6 @@ FORMATTING
       FORCE       always
       LEADER      "S"
       ZERO_FORMAT Zero_real
-  }
-
-  ADDRESS Text
-  {
-      FORMAT      String
-      FORCE       always
-      LEADER      ""
   }
 
   ADDRESS fgref
@@ -686,6 +688,13 @@ FORMATTING
       MIN         0 Truncate
       LEADER      "SPOS="
       ZERO_FORMAT Zero_real
+  }
+
+  ADDRESS Text
+  {
+      FORMAT      String
+      FORCE       always
+      LEADER      ""
   }
 
 
@@ -811,6 +820,11 @@ FORMATTING
        M_coolant[$mom_sys_coolant_code(OFF)]
   }
 
+  BLOCK_TEMPLATE coolant_on
+  {
+       M_coolant[$mom_sys_coolant_code(ON)]
+  }
+
   BLOCK_TEMPLATE cutcom_off
   {
        G_cutcom[$mom_sys_cutcom_code(OFF)]
@@ -916,6 +930,11 @@ FORMATTING
   }
 
   BLOCK_TEMPLATE fixture_offset
+  {
+       G_offset[$mom_siemens_fixture_offset_value]\opt
+  }
+
+  BLOCK_TEMPLATE fixture_offset_1
   {
        G_offset[$mom_siemens_fixture_offset_value]\opt
   }
@@ -1073,6 +1092,20 @@ FORMATTING
        M_coolant[$mom_sys_coolant_code($mom_coolant_status)]\opt
        F[$mom_sinumerik_feed]\opt
   }
+  BLOCK_TEMPLATE linear_move_rotary
+  {
+       G_cutcom[$mom_sys_cutcom_code($mom_cutcom_status)]\opt
+       G_feed[$mom_sys_feed_rate_mode_code($feed_mode)]\opt
+       G_motion[$mom_sys_linear_code]
+       X[$mom_mcs_goto(0)]
+       Z[$mom_mcs_goto(2)]\opt
+       fifth_axis[$mom_out_angle_pos(1)]
+       S[$mom_spindle_speed]
+       D[$mom_tool_adjust_register]\opt
+       M_spindle[$mom_sys_spindle_direction_code($mom_spindle_direction)]\opt
+       M_coolant[$mom_sys_coolant_code($mom_coolant_status)]\opt
+       F[$mom_sinumerik_feed]\opt
+  }
 
   BLOCK_TEMPLATE manual_tool_change
   {
@@ -1200,6 +1233,21 @@ FORMATTING
        Text[TRANS X0 Y0 Z0]
   }
 
+  BLOCK_TEMPLATE return_first_ref_X
+  {
+       Text[SUPA]
+       G_motion[$mom_sys_rapid_code]
+       X[0.0]
+  }
+
+  BLOCK_TEMPLATE return_first_ref_Y
+  {
+       Text[SUPA]
+       G_motion[$mom_sys_rapid_code]
+       Y[-400.0]
+       Text[;(First reference point)]
+  }
+
   BLOCK_TEMPLATE return_motion
   {
        M_spindle[$mom_sys_spindle_direction_code(OFF)]\opt
@@ -1220,7 +1268,7 @@ FORMATTING
   {
        G_motion[$mom_sys_rapid_code]
        fourth_axis[$mom_out_angle_pos(0)]
-       fifth_axis[$mom_out_angle_pos(1)]
+       fifth_axis_DC[$mom_out_angle_pos(1)]
   }
 
   BLOCK_TEMPLATE rotation_vector
@@ -1248,6 +1296,7 @@ FORMATTING
   BLOCK_TEMPLATE spindle_off
   {
        M_spindle[$mom_sys_spindle_direction_code(OFF)]\opt
+       M_coolant[$mom_sys_coolant_code(OFF)]
   }
 
   BLOCK_TEMPLATE spindle_orient
@@ -1301,7 +1350,7 @@ FORMATTING
 
   BLOCK_TEMPLATE stop
   {
-       M[$mom_sys_program_stop_code]
+       M[$mom_sys_optional_stop_code]
   }
 
   BLOCK_TEMPLATE tap_deep
@@ -1317,7 +1366,8 @@ FORMATTING
 
   BLOCK_TEMPLATE tool_change
   {
-       T[=\"$mom_tool_name\"]
+       T[$mom_tool_number]
+       D[$mom_tool_adjust_register]\opt
   }
 
   BLOCK_TEMPLATE tool_change_1
@@ -1335,11 +1385,32 @@ FORMATTING
        D[$mom_tool_adjust_register]\opt
   }
 
+  BLOCK_TEMPLATE tool_change_return_home_AC
+  {
+       Text[SUPA]
+       G_motion[$mom_sys_rapid_code]
+       fourth_axis[0.0]
+  }
+
+  BLOCK_TEMPLATE tool_change_return_home_X
+  {
+       Text[SUPA]
+       G_motion[$mom_sys_rapid_code]
+       X[0.0]
+  }
+
+  BLOCK_TEMPLATE tool_change_return_home_Y
+  {
+       Text[SUPA]
+       G_motion[$mom_sys_rapid_code]
+       Y[0.0]
+  }
+
   BLOCK_TEMPLATE tool_change_return_home_Z
   {
        Text[SUPA]
        G_motion[$mom_sys_rapid_code]
-       Text[Z=_Z_HOME]
+       Z[0.0]
        D[0]\opt
   }
 
@@ -1381,16 +1452,6 @@ FORMATTING
        transf[$mom_siemens_5axis_output]\opt
   }
 
-  BLOCK_TEMPLATE comment_blk_1
-  {
-       " "
-  }
-
-  BLOCK_TEMPLATE comment_blk_2
-  {
-       " "
-  }
-
   BLOCK_TEMPLATE comment_blk_3
   {
        " "
@@ -1402,31 +1463,6 @@ FORMATTING
   }
 
   BLOCK_TEMPLATE comment_blk_5
-  {
-       " "
-  }
-
-  BLOCK_TEMPLATE comment_blk
-  {
-       " "
-  }
-
-  BLOCK_TEMPLATE comment_blk_6
-  {
-       " "
-  }
-
-  BLOCK_TEMPLATE comment_blk_7
-  {
-       " "
-  }
-
-  BLOCK_TEMPLATE comment_blk_8
-  {
-       " "
-  }
-
-  BLOCK_TEMPLATE comment_blk_9
   {
        " "
   }

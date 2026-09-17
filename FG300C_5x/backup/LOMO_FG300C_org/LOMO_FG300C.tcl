@@ -5,7 +5,7 @@
 #    This is a 5-Axis Milling Machine With
 #     Dual Rotary Tables.
 #
-#  Created by BalagurovAI @ Tuesday, August 18 2026, 16:17:51 +0300
+#  Created by BalagurovAI @ Friday, August 28 2026, 15:58:46 +0300
 #  with Post Builder version (Final Release).
 #
 ########################################################################
@@ -271,13 +271,13 @@ proc PB_CMD___log_revisions { } {
   set mom_sys_cir_vector                        "Vector - Arc Start to Center"
   set mom_sys_spindle_ranges                    "0"
   set mom_sys_rewind_stop_code                  "\#"
-  set mom_sys_home_pos(0)                       "999999.9"
-  set mom_sys_home_pos(1)                       "999999.9"
-  set mom_sys_home_pos(2)                       "999999.9"
+  set mom_sys_home_pos(0)                       "0"
+  set mom_sys_home_pos(1)                       "0"
+  set mom_sys_home_pos(2)                       "0"
   set mom_sys_zero                              "0"
   set mom_sys_opskip_block_leader               "/"
-  set mom_sys_seqnum_start                      "10"
-  set mom_sys_seqnum_incr                       "10"
+  set mom_sys_seqnum_start                      "1"
+  set mom_sys_seqnum_incr                       "1"
   set mom_sys_seqnum_freq                       "1"
   set mom_sys_seqnum_max                        "99999999"
   set mom_sys_lathe_x_double                    "1"
@@ -295,7 +295,7 @@ proc PB_CMD___log_revisions { } {
   set mom_sys_leader(Y)                         "Y"
   set mom_sys_leader(Z)                         "Z"
   set mom_sys_leader(fourth_axis)               "A"
-  set mom_sys_leader(fifth_axis)                "B"
+  set mom_sys_leader(fifth_axis)                "C"
   set mom_sys_contour_feed_mode(LINEAR)         "MMPM"
   set mom_sys_rapid_feed_mode(LINEAR)           "MMPM"
   set mom_sys_cycle_feed_mode                   "MMPM"
@@ -333,9 +333,9 @@ proc PB_CMD___log_revisions { } {
   set mom_kin_4th_axis_incr_switch              "OFF"
   set mom_kin_4th_axis_leader                   "A"
   set mom_kin_4th_axis_limit_action             "Warning"
-  set mom_kin_4th_axis_max_limit                "360"
+  set mom_kin_4th_axis_max_limit                "120"
   set mom_kin_4th_axis_min_incr                 "0.001"
-  set mom_kin_4th_axis_min_limit                "0"
+  set mom_kin_4th_axis_min_limit                "-90"
   set mom_kin_4th_axis_plane                    "YZ"
   set mom_kin_4th_axis_point(0)                 "0.0"
   set mom_kin_4th_axis_point(1)                 "0.0"
@@ -352,20 +352,20 @@ proc PB_CMD___log_revisions { } {
   set mom_kin_5th_axis_center_offset(2)         "0.0"
   set mom_kin_5th_axis_direction                "MAGNITUDE_DETERMINES_DIRECTION"
   set mom_kin_5th_axis_incr_switch              "OFF"
-  set mom_kin_5th_axis_leader                   "B"
+  set mom_kin_5th_axis_leader                   "C"
   set mom_kin_5th_axis_limit_action             "Warning"
   set mom_kin_5th_axis_max_limit                "360"
   set mom_kin_5th_axis_min_incr                 "0.001"
-  set mom_kin_5th_axis_min_limit                "0"
-  set mom_kin_5th_axis_plane                    "ZX"
+  set mom_kin_5th_axis_min_limit                "-360"
+  set mom_kin_5th_axis_plane                    "XY"
   set mom_kin_5th_axis_point(0)                 "0.0"
   set mom_kin_5th_axis_point(1)                 "0.0"
   set mom_kin_5th_axis_point(2)                 "0.0"
   set mom_kin_5th_axis_rotation                 "standard"
   set mom_kin_5th_axis_type                     "Table"
   set mom_kin_5th_axis_vector(0)                "0"
-  set mom_kin_5th_axis_vector(1)                "1"
-  set mom_kin_5th_axis_vector(2)                "0"
+  set mom_kin_5th_axis_vector(1)                "0"
+  set mom_kin_5th_axis_vector(2)                "1"
   set mom_kin_5th_axis_zero                     "0.0"
   set mom_kin_arc_output_mode                   "FULL_CIRCLE"
   set mom_kin_arc_valid_plane                   "XY"
@@ -375,7 +375,7 @@ proc PB_CMD___log_revisions { } {
   set mom_kin_flush_time                        "2.0"
   set mom_kin_linearization_flag                "1"
   set mom_kin_linearization_tol                 "0.01"
-  set mom_kin_machine_resolution                "0.001"
+  set mom_kin_machine_resolution                "0.0001"
   set mom_kin_machine_type                      "5_axis_dual_table"
   set mom_kin_machine_zero_offset(0)            "0.0"
   set mom_kin_machine_zero_offset(1)            "0.0"
@@ -499,11 +499,7 @@ proc MOM_end_of_program { } {
   global mom_program_aborted mom_event_error
    PB_CMD_end_of_extcall_program
 
-   MOM_output_literal ";End of Program"
-
-   MOM_do_template end_of_program
-   PB_CMD_end_of_program
-   MOM_set_seq_off
+   PB_CMD_output_end_of_program
 
   # Write tool list with time in commentary data
    LIST_FILE_TRAILER
@@ -524,6 +520,31 @@ proc MOM_end_of_program { } {
 #***********
 
 
+}
+
+
+#=============================================================
+proc PB_ROTARY_SIGN_SET { } {
+#=============================================================
+  global mom_sys_leader
+  global mom_out_angle_pos
+  global mom_rotary_direction_4th
+  global mom_rotary_direction_5th
+  global mom_kin_4th_axis_direction
+  global mom_kin_5th_axis_direction
+
+  if { [info exists mom_kin_5th_axis_direction] && \
+       [string match "SIGN_DETERMINES_DIRECTION" $mom_kin_5th_axis_direction] } {
+     set mom_sys_leader(fifth_axis) [string trimright $mom_sys_leader(fifth_axis) "-"]
+     if { $mom_rotary_direction_5th < 0 } {
+        set mom_out_angle_pos(1) [expr abs($mom_out_angle_pos(1))]
+        if [EQ_is_zero $mom_out_angle_pos(1)] {
+           append mom_sys_leader(fifth_axis) "-"
+        } else {
+           set mom_out_angle_pos(1) [expr -1 * $mom_out_angle_pos(1)]
+        }
+     }
+  }
 }
 
 
@@ -588,6 +609,7 @@ proc MOM_before_motion { } {
    FEEDRATE_SET
 
    switch $mom_motion_type {
+
       ENGAGE   { PB_engage_move }
       APPROACH { PB_approach_move }
       FIRSTCUT { catch {PB_first_cut} }
@@ -598,6 +620,8 @@ proc MOM_before_motion { } {
 
    if { [llength [info commands PB_CMD_kin_before_motion] ] } { PB_CMD_kin_before_motion }
    if { [llength [info commands PB_CMD_before_motion] ] }     { PB_CMD_before_motion }
+
+   PB_ROTARY_SIGN_SET
 }
 
 
@@ -1074,11 +1098,146 @@ proc MOM_bore_no_drag_move { } {
 
 
 #=============================================================
+#=============================================================
+proc PB_CMD__rotc_turn_block { } {
+#=============================================================
+# Single source of the rotary-table cutting block for the
+# interpolation-lock mode. The tool stays stationary while table C
+# rotates one full turn (slightly over 360 deg so the seam closes).
+# The sign comes from pb_lock_turn_sign (+ internal hole / - external boss).
+# C=IC(...) rotates incrementally while keeping G90 absolute, so no
+# G91/G90 pair is needed around the block.
+   global pb_lock_turn_sign
+   if { ![info exists pb_lock_turn_sign] } { set pb_lock_turn_sign -1 }
+   set angle [format "%.1f" [expr $pb_lock_turn_sign * 360.1]]
+   MOM_output_literal "G1 C=IC($angle) F200"
+}
+
+proc PB_CMD__rotc_arc_handle { } {
+#=============================================================
+# Interpolation-lock (rotary-table C) arc handling:
+#   - the CUT arc direction sets the turn sign (CCLW -> + internal, CLW -> - external);
+#   - the working circle (CUT arc) is replaced by the single rotary C turn.
+  global mom_ude_interpolation_lock
+  if { ![info exists mom_ude_interpolation_lock] || $mom_ude_interpolation_lock != "Yes" } {
+     return 0
+  }
+
+  global mom_arc_direction mom_motion_type
+  global pb_lock_turn_sign pb_lock_turn_done
+  if { ![info exists pb_lock_turn_done] } { set pb_lock_turn_done 0 }
+
+  if { [info exists mom_arc_direction] } {
+     if { $mom_arc_direction == "CCLW" } { set pb_lock_turn_sign 1 } else { set pb_lock_turn_sign -1 }
+  }
+
+  if { [info exists mom_motion_type] } {
+     if { $mom_motion_type == "CUT" || $mom_motion_type == "FIRSTCUT" || $mom_motion_type == "STEPOVER" } {
+        if { $pb_lock_turn_done == 0 } {
+           set pb_lock_turn_done 1
+           PB_CMD__rotc_turn_block
+        }
+        return 1
+     }
+  }
+
+  # The retract arc after the rotation must restart with G2/G3 (the literal
+  # G1 C=IC(...) block does not update the post motion-G state).
+  if { $pb_lock_turn_done == 1 } {
+     MOM_force Once G_motion
+  }
+  return 0
+}
+
+#=============================================================
+proc PB_CMD__rotc_r1 { } {
+#=============================================================
+# Return the scale factor R1 (ASCALE) for the interpolation-lock mode.
+# The value comes from the UDE "Interpolation_lock" (PARAM ASCALE_value ->
+# mom_ASCALE_value); 1.0 when the event does not provide a value.
+   global pb_ascale_req mom_ASCALE_value
+   set r1 1.0
+   if { [info exists pb_ascale_req] && $pb_ascale_req != "" } {
+      set r1 $pb_ascale_req
+   } elseif { [info exists mom_ASCALE_value] && $mom_ASCALE_value != "" } {
+      set r1 $mom_ASCALE_value
+   }
+   if { [catch {set r1 [expr double($r1)]}] } { set r1 1.0 }
+   return $r1
+}
+
+#=============================================================
+proc PB_CMD__lock_mode { } {
+#=============================================================
+# Single source of truth for the rotary-table interpolation-lock mode.
+# Accepted ONLY from the UDE "Interpolation_lock":
+#    command_status  = Active
+#    lock_axis       = Fourth   (rotary table C, any case)
+#    lock_axis_plane = XYPLAN   (planar XY pass, XYPLANE also accepted)
+# The verdict is cached in pb_lock_mode for the current operation.
+   global pb_lock_req pb_lock_axis_req pb_lock_plane_req pb_lock_mode
+   set pb_lock_mode 0
+   if { [info exists pb_lock_req] && $pb_lock_req == 1 } {
+      if { [info exists pb_lock_axis_req] && $pb_lock_axis_req == "fourth" } {
+         if { [info exists pb_lock_plane_req] && [string match "xyplan*" $pb_lock_plane_req] } {
+            set pb_lock_mode 1
+         }
+      }
+   }
+   return $pb_lock_mode
+}
+
+#=============================================================
+proc PB_CMD__lock_mode_apply { } {
+#=============================================================
+# Publish the lock-mode verdict into mom_ude_interpolation_lock - the state
+# variable read by the rest of the post (TRAFOOF, arc handling, M52,
+# R1/ASCALE, motion output). Evaluated at the start of every operation, so
+# no operation can inherit the mode from a previous one.
+   global mom_ude_interpolation_lock
+   if { [PB_CMD__lock_mode] } {
+      set mom_ude_interpolation_lock "Yes"
+   } else {
+      catch {unset mom_ude_interpolation_lock}
+   }
+}
+
+#=============================================================
+proc PB_CMD__rotc_linear_cut { } {
+#=============================================================
+# Interpolation-lock (rotary-table C) linear handling:
+# the working circle (CUT linear moves) is replaced by the single rotary C turn.
+   global mom_ude_interpolation_lock
+   if { ![info exists mom_ude_interpolation_lock] || $mom_ude_interpolation_lock != "Yes" } {
+      return 0
+   }
+
+   global mom_motion_type
+   global pb_lock_turn_done
+   if { ![info exists pb_lock_turn_done] } { set pb_lock_turn_done 0 }
+
+   if { [info exists mom_motion_type] } {
+      if { $mom_motion_type == "CUT" || $mom_motion_type == "FIRSTCUT" || $mom_motion_type == "STEPOVER" } {
+         if { $pb_lock_turn_done == 0 } {
+            set pb_lock_turn_done 1
+            PB_CMD__rotc_turn_block
+         }
+         return 1
+      }
+   }
+   return 0
+}
+
 proc MOM_circular_move { } {
 #=============================================================
    ABORT_EVENT_CHECK
 
+   if { [PB_CMD__rotc_arc_handle] } {
+      return
+   }
+
    CIRCLE_SET
+
 
    if { [PB_CMD__check_block_trafoof_mode] } {
       MOM_force Once X Y I J
@@ -1114,7 +1273,9 @@ proc MOM_coolant_off { } {
 #=============================================================
 proc MOM_coolant_on { } {
 #=============================================================
-   COOLANT_SET
+   # M8 is already output in Initial Move via PB_CMD_output_coolant_spindle,
+   # so the Coolant On event is not duplicated at the first motion.
+   return
 }
 
 
@@ -1451,40 +1612,25 @@ proc MOM_end_of_path { } {
       PB_CMD_kin_end_of_path
    }
 
-   MOM_output_literal ";End of Path"
-
-   if { [PB_CMD__check_block_reset_trans] } {
-      MOM_do_template reset_trans
-   }
-
-   if { [PB_CMD__check_block_reset_cycle800] } {
-      MOM_do_template reset_cycle800
-   }
-
-   if { [PB_CMD__check_block_reset_traori] } {
-      MOM_do_template trafoof
-   }
-
-   if { [PB_CMD__check_block_return_to_reference_point] } {
-      MOM_force Once Text G_motion Text D
-      MOM_do_template tool_change_return_home_Z
-   }
-
-   if { [PB_CMD__check_block_return_to_reference_point] } {
-      MOM_force Once Text G_motion Text D
-      MOM_do_template tool_change_return_home
-   }
-
-   if { [PB_CMD__check_block_reset_cycle832] } {
-      MOM_do_template reset_cycle832
-   }
-
-   MOM_do_template spindle_off
-   PB_CMD_reset_control_mode
-   PB_CMD_end_of_extcall_operation
-   PB_CMD_reset_Sinumerik_setting
+   PB_CMD_output_end_of_path
    global mom_sys_in_operation
    set mom_sys_in_operation 0
+
+   # Reset the interpolation-lock mode and its UDE inputs so neither the mode
+   # nor the stock Lock Axis variables leak into the following operations.
+   # The "global" line is required - without it "unset" would address
+   # non-existent local variables and the whole cleanup would be a no-op.
+   global mom_ude_interpolation_lock pb_lock_mode pb_lock_req
+   global pb_lock_axis_req pb_lock_plane_req pb_ascale_req
+   global mom_lock_axis mom_lock_axis_plane
+   catch {unset mom_ude_interpolation_lock}
+   catch {unset pb_lock_mode}
+   catch {unset pb_lock_req}
+   catch {unset pb_lock_axis_req}
+   catch {unset pb_lock_plane_req}
+   catch {unset pb_ascale_req}
+   catch {unset mom_lock_axis}
+   catch {unset mom_lock_axis_plane}
 }
 
 
@@ -1505,18 +1651,23 @@ proc MOM_first_move { } {
    PB_CMD_detect_operation_type
    PB_CMD_define_feed_variable_value
 
-   MOM_do_template msg_method
+   PB_CMD__output_3p2_retract
 
    MOM_do_template g17
 
-   MOM_output_literal ";First Move"
+   PB_CMD_output_comment ";First Move"
 
-   if { [PB_CMD__check_block_CYCLE832] } {
-      PB_call_macro CYCLE832_v7
-   }
+   # First-Move chain mirrors the reference Initial-Move chain
+   # (PB_CMD_output_initial_move): G54 -> G0 A0.0 C=DC(0.0) ->
+   # COMPOF/CYCLE832 -> TRAFOOF.  ORIRESET and CYCLE800(...) are
+   # output only when the operation really needs them (3+2 swivel),
+   # never for a plain planar / 3-axis first move.
+
+   MOM_force Once G_offset
+   MOM_do_template fixture_offset_1
 
    if { [PB_CMD__check_block_rotation_axes] } {
-      MOM_force Once G_motion fourth_axis fifth_axis
+      MOM_force Once G_motion fourth_axis fifth_axis_DC
       MOM_do_template rotation_axes
    }
 
@@ -1524,15 +1675,23 @@ proc MOM_first_move { } {
       PB_call_macro ORIRESET
    }
 
+   if { [PB_CMD__check_block_CYCLE832] } {
+      PB_call_macro CYCLE832_v7
+   }
+
+   # Machining-mode comment (lock / 5-axis / 3+2 / 3-axis), same as in the
+   # Initial-Move chain, so every operation is labelled.
+   PB_CMD__mode_comment
+
+   MOM_force Once transf
    MOM_do_template traori_trafoof
 
-   MOM_force Once G_offset
-   MOM_do_template fixture_offset
    PB_CMD_output_trans_arot
 
    if { [PB_CMD__check_block_CYCLE800] } {
       PB_call_macro CYCLE800_sl
    }
+
    PB_CMD_move_force_addresses
    catch { MOM_$mom_motion_event }
 
@@ -1556,31 +1715,7 @@ proc MOM_first_tool { } {
 
    set mom_sys_first_tool_handled 1
 
-   MOM_do_template trafoof
-
-   MOM_force Once Text G_motion Text D
-   MOM_do_template tool_change_return_home_Z
-
-   MOM_force Once Text G_motion Text D
-   MOM_do_template tool_change_return_home
-
-   MOM_output_literal ";First Tool"
-
-   MOM_force Once T
-   MOM_do_template tool_change
-
-   MOM_force Once M
-   MOM_do_template tool_change_1
-
-   MOM_do_template msg_method
-
-   MOM_do_template trafoof
-
-   MOM_force Once Text G_motion Text D
-   MOM_do_template tool_change_return_home_Z
-
-   MOM_force Once Text G_motion Text D
-   MOM_do_template tool_change_return_home
+   PB_CMD_output_first_tool
 }
 
 
@@ -1675,35 +1810,7 @@ proc MOM_initial_move { } {
 
    PB_CMD_define_feed_variable_value
    PB_CMD_detect_operation_type
-
-   MOM_do_template g17
-
-   MOM_output_literal ";Initial Move"
-
-   if { [PB_CMD__check_block_rotation_axes] } {
-      MOM_force Once G_motion fourth_axis fifth_axis
-      MOM_do_template rotation_axes
-   }
-
-   if { [PB_CMD__check_block_ORIRESET] } {
-      PB_call_macro ORIRESET
-   }
-
-   if { [PB_CMD__check_block_CYCLE832] } {
-      PB_call_macro CYCLE832_v7
-   }
-
-   MOM_force Once transf
-   MOM_do_template traori_trafoof
-
-   MOM_force Once G_offset
-   MOM_do_template fixture_offset
-   PB_CMD_output_trans_arot
-
-   if { [PB_CMD__check_block_CYCLE800] } {
-      PB_call_macro CYCLE800_sl
-   }
-   PB_CMD_move_force_addresses
+   PB_CMD_output_initial_move
 
   global mom_programmed_feed_rate
    if { [EQ_is_equal $mom_programmed_feed_rate 0] } {
@@ -1742,9 +1849,17 @@ proc MOM_length_compensation { } {
 
 
 #=============================================================
+
+#=============================================================
 proc MOM_linear_move { } {
 #=============================================================
    ABORT_EVENT_CHECK
+
+   # Rotating-table (interpolation-lock) mode: convert flat XY circle-pass into a C rotation
+   if { [PB_CMD__rotc_linear_cut] } {
+      return
+   }
+
 
    HANDLE_FIRST_LINEAR_MOVE
 
@@ -1787,6 +1902,54 @@ proc MOM_lock_axis { } {
    global mom_lock_axis_plane
    global mom_lock_axis_value
    PB_CMD_MOM_lock_axis
+}
+
+
+#=============================================================
+proc MOM_Interpolation_lock { } {
+#=============================================================
+# UDE "Interpolation lock". The post dispatches a UDE to MOM_<event name>,
+# so this wrapper forwards the event data to the handler
+# (see PB_CMD_MOM_Interpolation_lock / PB_CMD__lock_mode).
+   global mom_command_status
+   global mom_lock_axis
+   global mom_lock_axis_plane
+   global mom_ASCALE_value
+   PB_CMD_MOM_Interpolation_lock
+}
+
+
+#=============================================================
+proc MOM_Automatic_doors { } {
+#=============================================================
+# UDE "Automatic doors" - door control (see PB_CMD_MOM_Automatic_doors).
+   global mom_action
+   PB_CMD_MOM_Automatic_doors
+}
+
+
+#=============================================================
+proc PB_CMD_MOM_Automatic_doors { } {
+#=============================================================
+# UDE "Automatic doors" - snapshot the requested door action:
+#   action "open" -> pb_doors_open_end (M57 at program end, after all SUPA)
+   global mom_action pb_doors_open_end
+   if { [info exists mom_action] } {
+      set door_action [string tolower $mom_action]
+      if { $door_action == "open" } {
+         set pb_doors_open_end 1
+      }
+   }
+}
+
+
+#=============================================================
+proc PB_CMD_output_comment { text } {
+#=============================================================
+# Output a comment/literal without a sequence number.
+   set seq_state [MOM_set_seq_off]
+   MOM_output_literal $text
+   if { [string match "on" $seq_state] } { MOM_set_seq_on }
 }
 
 
@@ -1982,6 +2145,11 @@ proc MOM_start_of_path { } {
   global mom_sys_in_operation
    set mom_sys_in_operation 1
 
+   global pb_operation_count pb_3p2_retract_done
+   if { ![info exists pb_operation_count] } { set pb_operation_count 0 }
+   incr pb_operation_count
+   set pb_3p2_retract_done 0
+
   global first_linear_move ; set first_linear_move 0
    TOOL_SET MOM_start_of_path
 
@@ -1996,26 +2164,7 @@ proc MOM_start_of_path { } {
       PB_CMD_kin_start_of_path
    }
 
-   PB_CMD_start_of_extcall_operation
-   PB_CMD_output_start_program
-   PB_CMD_reset_sinumerik_setting_in_group
-   PB_CMD_set_fixture_offset
-
-   MOM_output_literal ";Start of Path"
-
-   MOM_do_template start_of_path_2
-
-   MOM_do_template home_position
-
-   MOM_do_template home_position_rotary
-
-   MOM_output_literal "; "
-
-   global mom_operation_name
-   MOM_output_literal ";Operation : $mom_operation_name"
-
-   MOM_output_literal "; "
-   PB_CMD_start_of_operation_force_addresses
+   PB_CMD_output_start_of_path
 }
 
 
@@ -2344,11 +2493,38 @@ proc PB_approach_move { } {
 proc PB_auto_tool_change { } {
 #=============================================================
    global mom_tool_number mom_next_tool_number
+   global mom_sys_first_tool_handled
+
+   # After the first change (MOM_first_tool -> PB_CMD_output_first_tool)
+   # Post Builder additionally calls MOM_tool_change.
+   # If the first tool was already fully output, skip the repeat.
+   if {[info exists mom_sys_first_tool_handled] && $mom_sys_first_tool_handled == 1} {
+      set mom_sys_first_tool_handled 0
+      return
+   }
+
    if { ![info exists mom_next_tool_number] } {
       set mom_next_tool_number $mom_tool_number
    }
 
-   MOM_output_literal ";Tool Change"
+   PB_CMD_output_comment ";Tool Change"
+
+   MOM_force Once M_coolant
+   MOM_do_template coolant_off
+
+   MOM_force Once M_spindle
+   MOM_do_template spindle_off
+
+   MOM_force Once Text G_motion D
+   MOM_do_template tool_change_return_home_Z
+
+   MOM_force Once Text G_motion X
+   MOM_do_template tool_change_return_home_X
+
+   MOM_force Once Text G_motion Y
+   MOM_do_template tool_change_return_home_Y
+
+   MOM_do_template stop
 
    MOM_force Once T
    MOM_do_template tool_change
@@ -2356,15 +2532,16 @@ proc PB_auto_tool_change { } {
    MOM_force Once M
    MOM_do_template tool_change_1
 
-   MOM_do_template msg_method
+   if {[info exists mom_next_tool_number] && $mom_next_tool_number != $mom_tool_number} {
+      MOM_force Once T
+      MOM_do_template tool_preselect
+   }
 
-   MOM_do_template trafoof
+   MOM_force Once Text G_motion X
+   MOM_do_template return_first_ref_X
 
-   MOM_force Once Text G_motion Text D
-   MOM_do_template tool_change_return_home_Z
-
-   MOM_force Once Text G_motion Text D
-   MOM_do_template tool_change_return_home
+   MOM_force Once Text G_motion Y
+   MOM_do_template return_first_ref_Y
 }
 
 
@@ -2434,6 +2611,9 @@ proc PB_start_of_program { } {
    PB_CMD_fix_RAPID_SET
    PB_CMD_spindle_orient
    PB_CMD_uplevel_ROTARY_AXIS_RETRACT
+   PB_CMD_output_program_header
+   PB_CMD_creat_tool_list_2
+   PB_CMD_output_program_footer
    MOM_set_seq_on
 
    if [CMD_EXIST PB_CMD_kin_start_of_program_2] {
@@ -2594,15 +2774,15 @@ return
   }
 
   MOM_set_seq_off
-  MOM_output_literal ";HEADER-START"
-  MOM_output_literal ";NODENAME=$mom_dnc_machine_name"
-  MOM_output_literal ";NCDATANAME=$mom_dnc_program_name"
-  MOM_output_literal ";NCDATATYPE=$mom_dnc_data_type"
-  MOM_output_literal ";VERSION=$mom_dnc_version_number"
-  MOM_output_literal ";RELEASEID=$mom_dnc_release_number"
-  MOM_output_literal ";DEVELNAME=$mom_dnc_user_name"
-  MOM_output_literal ";HEADER-END"
-  MOM_output_literal ";NC-START"
+  PB_CMD_output_comment ";HEADER-START"
+  PB_CMD_output_comment ";NODENAME=$mom_dnc_machine_name"
+  PB_CMD_output_comment ";NCDATANAME=$mom_dnc_program_name"
+  PB_CMD_output_comment ";NCDATATYPE=$mom_dnc_data_type"
+  PB_CMD_output_comment ";VERSION=$mom_dnc_version_number"
+  PB_CMD_output_comment ";RELEASEID=$mom_dnc_release_number"
+  PB_CMD_output_comment ";DEVELNAME=$mom_dnc_user_name"
+  PB_CMD_output_comment ";HEADER-END"
+  PB_CMD_output_comment ";NC-START"
   MOM_output_literal "%"
   MOM_set_seq_on
 }
@@ -2624,34 +2804,50 @@ proc PB_CMD_MOM_insert { } {
 #=============================================================
 proc PB_CMD_MOM_lock_axis { } {
 #=============================================================
-# Default handler for UDE MOM_lock_axis
-# - Do not attach it to any event!
-#
-# 18-Sep-2015 ljt - reset positive_radius, fix PR6961328
+# DEPRECATED: the stock UDE "Lock Axis" no longer switches the post into the
+# rotary-table interpolation-lock mode. The only trigger is the UDE
+# "Interpolation_lock" (see PB_CMD_MOM_Interpolation_lock / PB_CMD__lock_mode).
+# The event stays declared in .cdl/.pui so that old parts do not fail.
+   global mom_lock_axis
+}
 
-  global mom_sys_lock_value mom_sys_lock_plane
-  global mom_sys_lock_axis mom_sys_lock_status
 
-   set status [SET_LOCK axis plane value]
-   if { ![string compare "error" $status] } {
-      MOM_catch_warning
-      set mom_sys_lock_status OFF
-   } else {
-      set mom_sys_lock_status $status
-      if { [string compare "OFF" $status] } {
-         set mom_sys_lock_axis $axis
-         set mom_sys_lock_plane $plane
-         set mom_sys_lock_value $value
+#=============================================================
+proc PB_CMD_MOM_Interpolation_lock { } {
+#=============================================================
+# UDE "Interpolation lock" - the only trigger of the rotary-table
+# interpolation-lock mode (see PB_CMD__lock_mode):
+#    command_status  : Active / Inactive
+#    lock_axis       : Fourth / Off
+#    lock_axis_plane : XYPLAN / NONE
+#    ASCALE_value    : scale factor R1 emitted to the NC program
+# The inputs are snapshotted here, the verdict is taken in PB_CMD__lock_mode.
+   global mom_command_status mom_lock_axis mom_lock_axis_plane mom_ASCALE_value
+   global pb_lock_req pb_lock_axis_req pb_lock_plane_req pb_ascale_req
 
-         LOCK_AXIS_INITIALIZE
-      } else {
-         global positive_radius
+   # Values are compared case-insensitively (see PB_CMD__lock_mode).
+   set pb_lock_req 0
+   if { [info exists mom_command_status] } {
+      if { [string tolower $mom_command_status] == "active" } { set pb_lock_req 1 }
+   }
 
-         set positive_radius "0"
+   set pb_lock_axis_req "off"
+   if { [info exists mom_lock_axis] && $mom_lock_axis != "" } {
+      set pb_lock_axis_req [string tolower $mom_lock_axis]
+   }
+
+   set pb_lock_plane_req "none"
+   if { [info exists mom_lock_axis_plane] && $mom_lock_axis_plane != "" } {
+      set pb_lock_plane_req [string tolower $mom_lock_axis_plane]
+   }
+
+   set pb_ascale_req 1.0
+   if { [info exists mom_ASCALE_value] && $mom_ASCALE_value != "" } {
+      if { [catch {set pb_ascale_req [expr double($mom_ASCALE_value)]}] } {
+         set pb_ascale_req 1.0
       }
    }
 }
-
 
 #=============================================================
 proc PB_CMD_MOM_operator_message { } {
@@ -2818,7 +3014,7 @@ return
 return
     }
     MOM_set_seq_off
-    MOM_output_literal ";Main program"
+    PB_CMD_output_comment ";Main program"
     MOM_set_seq_on
     MOM_close_output_file $ptp_file_name
   }
@@ -3172,7 +3368,7 @@ proc PB_CMD__check_block_CYCLE800 { } {
 #-----------------------------------------------------------
 #Please set your swivel data record
 #-----------------------------------------------------------
-   set cycle800_tc "\"R_DATA\"" ;# For example,please put your data here
+   set cycle800_tc "\"TABLE\"" ;# Table name in CYCLE800 (per reference NC 2.mpf)
 
 #-----------------------------------------------------------
 #Please set your incremental retraction
@@ -3344,10 +3540,10 @@ proc PB_CMD__check_block_CYCLE832 { } {
 
             switch -- $mom_siemens_method {
 
-               "ROUGHING"        {set cycle832_tolm 3}
-               "ROUGH-FINISHING" {set cycle832_tolm 2}
-               "FINISHING"       {set cycle832_tolm 1}
-               default           {set cycle832_tolm 0}
+               "ROUGHING"        {set cycle832_tolm "_ROUGH"}
+               "ROUGH-FINISHING" {set cycle832_tolm "_SEMIFIN"}
+               "FINISHING"       {set cycle832_tolm "_FINISH"}
+               default           {set cycle832_tolm "_OFF"}
             }
 
             if {![string compare "V7" $sinumerik_version] } {
@@ -4050,6 +4246,12 @@ proc PB_CMD__check_block_rotary { } {
         CATCH_WARNING "$mom_operation_name:A3B3C3 should work with TRAORI mode, change to rotary output"
      }
 
+     # 3+2 (SWIVELING): CYCLE800 positions the table (A and C), so the rotary
+     # axes must not be output again in the motion block.
+     if { [info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation != 0 && [string match "SWIVELING" $mom_siemens_5axis_mode] } {
+        MOM_suppress Once fourth_axis fifth_axis
+     }
+
  return 1
   } else {
      if {[info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation == 2} {
@@ -4118,7 +4320,7 @@ proc PB_CMD__check_block_rotation_axes { } {
       global mom_kin_4th_axis_max_limit mom_kin_4th_axis_direction mom_kin_4th_axis_min_limit mom_kin_4th_axis_leader
       global mom_kin_5th_axis_max_limit mom_kin_5th_axis_direction mom_kin_5th_axis_min_limit mom_kin_5th_axis_leader
 
-      MOM_force once fourth_axis fifth_axis
+      MOM_force once fourth_axis fifth_axis_DC
 
       if { ![info exists mom_prev_out_angle_pos(0)] } { set mom_prev_out_angle_pos(0) 0 }
       if { ![info exists mom_prev_out_angle_pos(1)] } { set mom_prev_out_angle_pos(1) 0 }
@@ -4404,7 +4606,14 @@ proc PB_CMD__check_block_traori_rotary { } {
 
         if { [info exists mom_tool_axis] && [info exists mom_prev_tool_axis] } {
            if { [VEC3_is_equal mom_tool_axis mom_prev_tool_axis] } {
-              MOM_suppress Once fourth_axis fifth_axis
+              global mom_ude_interpolation_lock
+              if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+# Rotation-table mode (interpolation_lock): axis A is suppressed (constant tool-vector)
+# axis C (table rotation) is always output even if tool direction is constant.
+                 MOM_suppress Once fourth_axis
+              } else {
+                 MOM_suppress Once fourth_axis fifth_axis
+              }
            }
         }
 
@@ -5407,7 +5616,7 @@ proc PB_CMD_config_cycle_start { } {
 
 
 #=============================================================
-proc PB_CMD_creat_tool_list { } {
+proc PB_CMD_creat_tool_list_2 { } {
 #=============================================================
 #  Place this custom command in either the start of program
 #  or the end of program event marker to generate a tool list
@@ -5536,17 +5745,8 @@ return
    }
 
 
-
   #------------------
-  # Tool list header
-  #------------------
-#   shop_doc_output_literal "$co===============================================================================================$ci"
-#   shop_doc_output_literal "$co                                   T O O L   L I S T                                           $ci"
-#   shop_doc_output_literal "$co===============================================================================================$ci"
-
-
-  #------------------
-  # Output tool list
+  # Output tool list in compact format
   #------------------
    global tool_data_buffer
    global mom_sys_tool_stack
@@ -5568,24 +5768,40 @@ return
 
 
    set prev_tool_type ""
+   set tool_count 0
+   set tool_list_output ""
 
    foreach tool $tool_list {
 
       set tool_type $tool_data_buffer($tool,type)
 
-     # Output tool type header if it changes.
-      if { ![string match "$tool_type" $prev_tool_type] } {
-         if { [info exists tool_data_buffer($tool_type,header)] &&  $tool_data_buffer($tool_type,header) != "" } {
-            shop_doc_output_literal ";$tool_data_buffer($tool_type,header)"
+      if [info exists tool_data_buffer($tool,output)] {
+         set tool_line $tool_data_buffer($tool,output)
+
+         # Parse all tool fields
+         # Format: NUMBER  NAME  DIAMETER  COR_RAD  FLUTE_LEN  ADJ_REG
+         if { [regexp {^([^\s]+)\s+([^\s]+)\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)} $tool_line match number name dia rad flute adj] } {
+            incr tool_count
+            if { $tool_list_output != "" } {
+               append tool_list_output "\n"
+            }
+            # Format as in your example
+            append tool_list_output ";(T${number}=${name} D=${dia} DR_angle=${rad} H${adj} D00)"
          }
       }
 
-      if [info exists tool_data_buffer($tool,output)] {
-         shop_doc_output_literal ";$tool_data_buffer($tool,output)"
-      }
       set prev_tool_type $tool_type
    }
 
+   # Output the total number of tools
+   if { $tool_count > 0 } {
+      shop_doc_output_literal ";(Total Tool:${tool_count})"
+   }
+
+   # Output the tool list
+   if { $tool_list_output != "" } {
+      shop_doc_output_literal $tool_list_output
+   }
 
 
   #------------------
@@ -5934,9 +6150,9 @@ proc PB_CMD_define_feed_variable_value { } {
 
   if { [info exists mom_siemens_feed_definition] && $mom_siemens_feed_definition == "ON" } {
      PB_CMD_get_feed_value
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
      MOM_output_literal "_F_CUTTING=$mom_siemens_feed_value(cut) _F_ENGAGE=$mom_siemens_feed_value(engage) _F_RETRACT=$mom_siemens_feed_value(retract)"
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
   }
 }
 
@@ -6116,13 +6332,31 @@ proc PB_CMD_detect_operation_type { } {
     }
   }
 
+  # Interpolation-lock (UDE "Interpolation_lock"): 4-axis machining by rotating
+  # table C with TRAFOOF (no RTCP). Axis A stays locked, axis C is unlocked
+  # (see PB_CMD_m50_m52_unlock). The mode is decided once per operation, here.
+  PB_CMD__lock_mode_apply
+  global mom_ude_interpolation_lock mom_siemens_ori_def pb_lock_turn_done
+  if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+     set dpp_ge(toolpath_axis_num) 5
+     # Interpolation-lock runs with TRAFOOF (no RTCP): table rotates,
+     # tool stays stationary on the boss side.
+     set mom_siemens_5axis_mode "TRAFOOF"
+     set mom_siemens_ori_def "ROTARY AXES" ; # table rotation -> axis angles (C), not vector
+     set pb_lock_turn_done 0
+  }
+
 
   # Set output mode by post default rule if no UDE
   if { $mom_siemens_milling_setting == "Default"} {
      if {$dpp_ge(toolpath_axis_num)==5} {
        # set 5-axis simultaneous operation type
-        set mom_siemens_5axis_mode "TRAORI"
-     } else {
+        if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+           set mom_siemens_5axis_mode "TRAFOOF"
+        } else {
+           set mom_siemens_5axis_mode "TRAORI"
+        }
+   } else {
         set mom_siemens_5axis_mode $dpp_coord_rotation_output_type
      }
   }
@@ -6171,8 +6405,15 @@ proc PB_CMD_detect_operation_type { } {
         set save_mom_kin_arc_output_mode $mom_kin_arc_output_mode
         set save_mom_kin_helical_arc_output_mode $mom_kin_helical_arc_output_mode
      }
-     set mom_kin_arc_output_mode "LINEAR"
-     set mom_kin_helical_arc_output_mode "LINEAR"
+     if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+        # Interpolation-lock: keep circular moves so the approach/retract arcs
+        # are output as G2/G3 (the working circle is caught by PB_CMD__rotc_arc_handle).
+        set mom_kin_arc_output_mode "FULL_CIRCLE"
+        set mom_kin_helical_arc_output_mode "FULL_CIRCLE"
+     } else {
+        set mom_kin_arc_output_mode "LINEAR"
+        set mom_kin_helical_arc_output_mode "LINEAR"
+     }
      MOM_reload_kinematics
   } else {
      # <2017-02-20 szl> check if there is a UDE attached in operation
@@ -8496,9 +8737,102 @@ proc PB_CMD_linear_move { } {
 
 
 #=============================================================
+proc PB_CMD__mode_comment { } {
+#=============================================================
+# Output the machining-mode comment of the current operation. Called from the
+# Initial-Move chain (via PB_CMD_m50_m52_unlock) and from the First-Move chain,
+# so every operation is labelled:
+#   interpolation lock -> ;INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C ROTATION).
+#   continuous 5-axis  -> ;AXES UNLOCKED. CONTINUOUS 5-AXIS MACHINING ON.
+#   3+2 (positioned)   -> ;3+2 MILLING MODE
+#   plain 3-axis       -> ;AXES LOCKED. 3-AXIS MILLING
+   global mom_siemens_coord_rotation
+   if { [PB_CMD__lock_mode] } {
+      PB_CMD_output_comment ";INTERPOLATION LOCK. 4-AXIS MACHINING (TABLE C ROTATION)."
+   } elseif { [PB_CMD_detect_5axis_tool_path] } {
+      PB_CMD_output_comment ";AXES UNLOCKED. CONTINUOUS 5-AXIS MACHINING ON."
+   } elseif { [info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation != 0 } {
+      # 3+2: the table/detail is positioned by CYCLE800 (or by the A/C rotation
+      # frame) and machining itself runs in 3 axes - the axes stay locked.
+      PB_CMD_output_comment ";3+2 MILLING MODE"
+   } else {
+      PB_CMD_output_comment ";AXES LOCKED. 3-AXIS MILLING"
+   }
+}
+
+
+#=============================================================
+proc PB_CMD__is_3p2 { } {
+#=============================================================
+# Return 1 if the current operation is a positioned 3+2 operation
+# (CYCLE800 / A-C rotation frame), 0 otherwise. Same condition as the
+# 3+2 branch in PB_CMD__mode_comment: not the interpolation-lock mode,
+# not continuous 5-axis, and mom_siemens_coord_rotation != 0.
+   global mom_siemens_coord_rotation
+   if { [PB_CMD__lock_mode] } { return 0 }
+   if { [PB_CMD_detect_5axis_tool_path] } { return 0 }
+   if { [info exists mom_siemens_coord_rotation] && $mom_siemens_coord_rotation != 0 } { return 1 }
+   return 0
+}
+
+
+#=============================================================
+proc PB_CMD__output_3p2_retract { } {
+#=============================================================
+# Retract Z to the machine reference point (SUPA G0 Z0.0) right before a
+# 3+2 operation, so the tool clears the part before the table is swivelled
+# by CYCLE800. Emitted only when:
+#   - this is not the first operation in the program;
+#   - no tool change happened right before this operation (a tool change
+#     already retracts to the reference point);
+#   - the current operation really is 3+2.
+# pb_3p2_retract_done guards against the First-Move and Initial-Move chains
+# emitting the retract twice for the same operation.
+   global pb_operation_count pb_3p2_retract_done pb_next_oper_has_tool_change
+   if { ![info exists pb_operation_count] || $pb_operation_count <= 1 } { return }
+   if { [info exists pb_3p2_retract_done] && $pb_3p2_retract_done } { return }
+   if { [info exists pb_next_oper_has_tool_change] && $pb_next_oper_has_tool_change } { return }
+   if { ![PB_CMD__is_3p2] } { return }
+   set pb_3p2_retract_done 1
+   MOM_suppress Once D
+   MOM_force Once Text G_motion
+   MOM_do_template tool_change_return_home_Z
+}
+
+
+#=============================================================
+proc PB_CMD_m50_m52_unlock { } {
+#=============================================================
+# Unlocking axes (M50/M52) for continuous 5-axis machining.
+# 5-axis operation detection lives in the standard
+# function PB_CMD_detect_5axis_tool_path (uses mom_operation_type,
+# mom_tool_axis_type and mom_tool_path_type).
+#
+# Separate mode: "Interpolation lock" (UDE "Interpolation_lock").
+# When active, machining runs in 4-axis mode (table rotation C
+# with TRAFOOF, no RTCP): axis A stays locked, axis C unlocked (M52).
+   global mom_ude_interpolation_lock
+if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+    # 4-axis machining: table rotation C, axis A locked
+    MOM_output_literal "M52 ;(C-axis loose)"
+    PB_CMD__mode_comment
+} elseif { [PB_CMD_detect_5axis_tool_path] } {
+    # Continuous 5-axis machining
+    MOM_output_literal "M50 ;(A-axis loose)"
+    MOM_output_literal "M52 ;(C-axis loose)"
+    PB_CMD__mode_comment
+} else {
+    # 3-axis or 3+2 machining - the comment tells which one
+    PB_CMD__mode_comment
+}
+}
+
+
+#=============================================================
 proc PB_CMD_move_force_addresses { } {
 #=============================================================
-  MOM_force once G_motion X Y Z D
+  MOM_force once G_motion X Y
+  MOM_force once G_motion Z D
 }
 
 
@@ -8720,6 +9054,138 @@ return
 
 
 #=============================================================
+proc PB_CMD_output_coolant_spindle { } {
+#=============================================================
+# Coolant (M8) and spindle (S... M3/M4) are switched on in separate blocks
+# before the G54 datum and CYCLE800, as in the reference program 2.mpf:
+#     M8
+#     S1500 M3
+#     G54
+#     TRAFOOF
+#     CYCLE800(...)
+# Addresses are output through templates without force, so the
+# Coolant On / Spindle RPM events do not duplicate them at the first motion.
+  global mom_coolant_mode mom_spindle_speed mom_spindle_direction
+  global mom_sys_coolant_pre_output
+
+   if {[info exists mom_coolant_mode] && $mom_coolant_mode != "OFF"} {
+      MOM_do_template coolant_on
+      set mom_sys_coolant_pre_output 1
+   }
+
+   if {[info exists mom_spindle_speed] && $mom_spindle_speed > 0} {
+      MOM_do_template spindle_rpm
+   }
+}
+
+
+#=============================================================
+proc PB_CMD_output_end_of_path { } {
+#=============================================================
+# End-of-path logic in the order of the reference program 2.mpf:
+#     TRAFOOF            ;(only if TRAORI / 5-axis was active)
+#     CYCLE832()
+#     SUPA G00 Z0.0
+#     ;(End of Path)
+# Returning X/Y/A/C and switching spindle/coolant off is done by Tool Change
+# (M9/M5 + SUPA Z0.0 D0/X0.0/Y0.0) and PB_CMD_output_end_of_program.
+  global mom_sys_in_operation
+
+   # Reset 5-axis transformation (only if TRAORI was active)
+   if { [PB_CMD__check_block_reset_traori] } {
+      MOM_do_template trafoof
+   }
+
+   # Close CYCLE800 (reset the 3+2 swivel frame) when the operation used it
+   if { [PB_CMD__check_block_reset_cycle800] } {
+      MOM_do_template reset_cycle800
+   }
+
+   # Switch CYCLE832 off
+   if { [PB_CMD__check_block_reset_cycle832] } {
+      MOM_do_template reset_cycle832
+   }
+
+   # SUPA G00 Z0.0 (without D0)
+   if { [PB_CMD__check_block_return_to_reference_point] } {
+      MOM_suppress Once D
+      MOM_force Once Text G_motion
+      MOM_do_template tool_change_return_home_Z
+   }
+
+   PB_CMD_output_comment ";(End of Path)"
+   MOM_set_seq_off
+   MOM_output_literal " "
+   MOM_set_seq_on
+
+   # Remember whether the next operation has a tool change: the 3+2 retract
+   # (SUPA G0 Z0.0) must only be emitted when there is NO tool change, because
+   # a tool change already retracts to the reference point.
+   global mom_next_oper_has_tool_change pb_next_oper_has_tool_change
+   set pb_next_oper_has_tool_change 0
+   if { [info exists mom_next_oper_has_tool_change] && $mom_next_oper_has_tool_change == "YES" } {
+      set pb_next_oper_has_tool_change 1
+   }
+
+   PB_CMD_reset_control_mode
+   PB_CMD_end_of_extcall_operation
+   PB_CMD_reset_Sinumerik_setting
+   set mom_sys_in_operation 0
+}
+
+
+#=============================================================
+proc PB_CMD_output_end_of_program { } {
+#=============================================================
+# Spindle/coolant off and return home at the end of the program,
+# in the order of the reference program 2.mpf:
+#     M9
+#     M5
+#     SUPA G00 Z0.0 D0
+#     SUPA G00 X0.0
+#     SUPA G00 Y0.0
+#     SUPA G00 A0.0
+#     M30
+#     ;(End of Program)
+  global mom_program_aborted mom_event_error
+
+   # Spindle & coolant off in reference order: M9 (coolant) then M5 (spindle)
+   MOM_force Once M_coolant
+   MOM_do_template coolant_off
+
+   MOM_force Once M_spindle
+   MOM_do_template spindle_off
+
+   # Return home with numeric coordinates, as in reference NC 2.mpf.
+   # Force G0 and every coordinate on each SUPA block so no SUPA
+   # line comes out empty or without the rapid word.
+   MOM_force Once Text G_motion D Z
+   MOM_do_template tool_change_return_home_Z
+
+   MOM_force Once Text G_motion X
+   MOM_do_template tool_change_return_home_X
+
+   MOM_force Once Text G_motion Y
+   MOM_do_template tool_change_return_home_Y
+
+   MOM_force Once Text G_motion fourth_axis
+   MOM_do_template tool_change_return_home_AC
+
+   # Automatic doors: open (M57) at the very end, after all SUPA
+   global pb_doors_open_end
+   if { [info exists pb_doors_open_end] && $pb_doors_open_end } {
+      MOM_output_literal "M57"
+	  PB_CMD_output_comment ";(Automatic doors: opened)"
+   }
+
+   MOM_do_template end_of_program
+   PB_CMD_end_of_program
+   MOM_set_seq_off
+   PB_CMD_output_comment ";(End of Program)"
+}
+
+
+#=============================================================
 proc PB_CMD_output_feed_define { } {
 #=============================================================
 # This is used to output feedrate variable's value
@@ -8727,7 +9193,7 @@ proc PB_CMD_output_feed_define { } {
      global mom_siemens_feed_output_block
      global mom_seqnum
      set mom_siemens_feed_output_block [expr int($mom_seqnum)]
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
 }
 
 
@@ -8836,6 +9302,122 @@ return
 
 
 #=============================================================
+proc PB_CMD_output_first_tool { } {
+#=============================================================
+# First tool change logic in the order of the reference program 2.mpf:
+#     ;(First Tool)
+#     M1
+#     T7 D1
+#     M6
+#     T1                 ;(preselect the next tool)
+#     SUPA G00 X0.0
+#     SUPA G00 Y-400.0 ;(First reference point)
+   PB_CMD_output_comment ";(First Tool)"
+
+   MOM_do_template stop
+
+   MOM_force Once T
+   MOM_do_template tool_change
+
+   MOM_force Once M
+   MOM_do_template tool_change_1
+
+   if {[info exists mom_next_tool_number] && $mom_next_tool_number != $mom_tool_number} {
+      MOM_force Once T
+      MOM_do_template tool_preselect
+   }
+
+   MOM_force Once Text G_motion X
+   MOM_do_template return_first_ref_X
+
+   MOM_force Once Text G_motion Y
+   MOM_do_template return_first_ref_Y
+}
+
+
+#=============================================================
+proc PB_CMD_output_initial_move { } {
+#=============================================================
+# Operation initial move in the order of the reference program 2.mpf:
+#     ;(Initial Move)
+#     M8
+#     S1500 M3
+#     G54
+#     TRAFOOF
+#     CYCLE800(...)
+# Called from the Initial Move event.
+  global mom_programmed_feed_rate
+
+   PB_CMD__output_3p2_retract
+
+   MOM_do_template g17
+
+   PB_CMD_output_comment ";(Initial Move)"
+
+   # The lock mode is driven by the UDE "Interpolation_lock" only (see
+   # PB_CMD__lock_mode). Re-evaluate it here as well: the UDE event may be
+   # posted after the operation was first examined, and the verdict must be in
+   # force before R1/ASCALE are emitted.
+   PB_CMD__lock_mode_apply
+
+   # Rotating-table (interpolation-lock): R1/ASCALE are emitted in this mode only.
+   if { [PB_CMD__lock_mode] } {
+      set r1val [PB_CMD__rotc_r1]
+      set r1str [format "%.3f" $r1val]
+      MOM_output_literal "R1=$r1str"
+   }
+
+
+   PB_CMD_output_coolant_spindle
+
+   MOM_force Once G_offset
+   MOM_do_template fixture_offset_1
+
+   if { [PB_CMD__check_block_rotation_axes] } {
+      MOM_force Once G_motion fourth_axis fifth_axis_DC
+      MOM_do_template rotation_axes
+   }
+
+   if { [PB_CMD__check_block_ORIRESET] } {
+      PB_call_macro ORIRESET
+   }
+
+   if { [PB_CMD__check_block_CYCLE832] } {
+      PB_call_macro CYCLE832_v7
+   }
+
+   PB_CMD_m50_m52_unlock
+
+   MOM_force Once transf
+   MOM_do_template traori_trafoof
+
+   PB_CMD_output_trans_arot
+
+   if { [PB_CMD__check_block_CYCLE800] } {
+      PB_call_macro CYCLE800_sl
+   }
+   PB_CMD_move_force_addresses
+
+   # Rotating-table (interpolation-lock): activate scaling before first XY approach.
+   if { [PB_CMD__lock_mode] } {
+      MOM_output_literal "ASCALE X=R1 Y=R1"
+   }
+
+
+   if { [EQ_is_equal $mom_programmed_feed_rate 0] } {
+      MOM_rapid_move
+   } else {
+      MOM_linear_move
+   }
+
+   # Configure turbo output settings
+   if { [CMD_EXIST CONFIG_TURBO_OUTPUT] } {
+      CONFIG_TURBO_OUTPUT
+   }
+}
+
+
+#=============================================================
 proc PB_CMD_output_motion_message { } {
 #=============================================================
 # This command is used to output motion type before movements.
@@ -8851,7 +9433,7 @@ return
       "STEPOVER" -
       "CUT" {
          if { ![string match "FIRSTCUT" $mom_siemens_pre_motion] && ![string match "CUT" $mom_siemens_pre_motion] && ![string match "STEPOVER" $mom_siemens_pre_motion] } {
-            MOM_output_literal ";Cutting"
+            PB_CMD_output_comment ";Cutting"
          }
          set mom_siemens_pre_motion $mom_motion_type
       }
@@ -8859,11 +9441,176 @@ return
          set motion_type_first [string toupper [string index $mom_motion_type 0]]
          set motion_type_end [string tolower [string range $mom_motion_type 1 end]]
          set motion_type $motion_type_first$motion_type_end
-         MOM_output_literal ";$motion_type Move"
+         PB_CMD_output_comment ";$motion_type Move"
          set mom_siemens_pre_motion $mom_motion_type
       }
     }
  }
+}
+
+
+#=============================================================
+proc PB_CMD_output_operation_comment { } {
+#=============================================================
+# Operation comment in reference format: ;(D15-KC)
+  global mom_operation_name
+   PB_CMD_output_comment ";($mom_operation_name)"
+}
+
+
+#=============================================================
+proc PB_CMD_output_program_footer { } {
+#=============================================================
+# Reference DNC header (lower part): PC and file paths.
+#     ;(PC:SPBNB111529)
+#     ;(D:\...\*.prt)
+#     ;(D:\...\*.mpf)
+  global mom_part_name mom_dnc_program_name
+  global env
+
+   # PC (computer name)
+   if {[info exists env(COMPUTERNAME)] && $env(COMPUTERNAME) != ""} {
+      PB_CMD_output_comment ";(PC:$env(COMPUTERNAME))"
+   }
+
+   # Part path (mom_part_name already holds the full path including drive)
+   if {[info exists mom_part_name] && $mom_part_name != ""} {
+      PB_CMD_output_comment ";($mom_part_name)"
+   }
+
+   # Path to the output NC
+   if {[info exists mom_dnc_program_name] && $mom_dnc_program_name != ""} {
+      PB_CMD_output_comment ";($mom_dnc_program_name)"
+   }
+}
+
+
+#=============================================================
+proc PB_CMD_output_program_header { } {
+#=============================================================
+# Reference DNC header format (upper part):
+#     ;(Equipment:SINUMERIK-ONE-G300)
+#     ;(Founder:BalagurovAI)
+#     ;(2026/08/26 16:03 /3)
+#     ;(NC name:2.nc)
+#     ;(Machine time: 0.25 MIN)
+# Total Tool and the tool list are built by PB_CMD_creat_tool_list_2,
+# while PC and file paths are output by PB_CMD_output_program_footer.
+  global mom_dnc_machine_name mom_dnc_user_name
+  global mom_logname mom_date mom_machine_time mom_dnc_program_name mom_oper_program
+
+   # Equipment (controller/machine) - taken from DNC settings, otherwise default
+   if {[info exists mom_dnc_machine_name] && $mom_dnc_machine_name != ""} {
+      set equip $mom_dnc_machine_name
+   } else {
+      set equip "SINUMERIK-ONE-G300"
+   }
+   PB_CMD_output_comment ";(Equipment:$equip)"
+
+   # Founder (NC program author)
+   if {[info exists mom_dnc_user_name] && $mom_dnc_user_name != ""} {
+      set founder $mom_dnc_user_name
+   } elseif {[info exists mom_logname] && $mom_logname != ""} {
+      set founder $mom_logname
+   } else {
+      set founder "NONE"
+   }
+   PB_CMD_output_comment ";(Founder:$founder)"
+
+   # Date and time in the reference format: ;(2026/08/28 09:57 /5)
+   if {[info exists mom_date] && $mom_date != ""} {
+      set fmtdt [clock format [clock scan $mom_date] -format "%Y/%m/%d %H:%M"]
+      PB_CMD_output_comment ";( $fmtdt /1)"
+   }
+
+   # NC name (output NC file name)
+   set ncname ""
+   if {[info exists mom_dnc_program_name] && $mom_dnc_program_name != ""} {
+      set ncname [file tail $mom_dnc_program_name]
+   } elseif {[info exists mom_oper_program] && $mom_oper_program != ""} {
+      set ncname [file tail $mom_oper_program]
+   }
+   PB_CMD_output_comment ";(NC name:$ncname)"
+
+   # Machine time (minutes, one digit)
+   if {[info exists mom_machine_time] && $mom_machine_time != ""} {
+      set mtime [format "%.1f" $mom_machine_time]
+      PB_CMD_output_comment ";(Machine time: $mtime MIN)"
+   }
+}
+
+
+#=============================================================
+proc PB_CMD__format_cam_tolerance { value } {
+#=============================================================
+# Format a tolerance the way the post does (up to 4 decimals, trailing
+# zeros suppressed) but keep the leading zero: 0.06 instead of .06.
+   set text [format "%.4f" $value]
+   regsub -all {0+$} $text "" text
+   if { [string match "*." $text] } {
+      append text "0"
+   }
+   return $text
+}
+
+
+#=============================================================
+proc PB_CMD_output_start_of_path { } {
+#=============================================================
+# Program start logic in the order of the reference program 2.mpf:
+#     G40...
+#     TRAFOOF
+#     CYCLE800()
+#     SUPA G00 Z0.0 D0 / X0.0 / Y0.0 / A0.0
+#     ;(start of Path)
+#     _camtolerance=0.01
+#     ;(D15-KC)
+   global pb_home_return_flag mom_inside_outside_tolerances
+
+   PB_CMD_start_of_extcall_operation
+   PB_CMD_output_start_program
+   PB_CMD_reset_sinumerik_setting_in_group
+   PB_CMD_set_fixture_offset
+
+   # Return home (TRAFOOF / CYCLE800 / SUPA ...) is output only
+   # once at the program start, not on every operation.
+   if { ![info exists pb_home_return_flag] } {
+      set pb_home_return_flag 1
+
+      # Automatic doors: close (M58) before the SUPA home return
+      MOM_output_literal "M58"
+	  PB_CMD_output_comment ";(Automatic doors: closed)"
+
+      MOM_do_template trafoof
+      MOM_do_template reset_cycle800
+
+      MOM_force Once Text G_motion D Z
+      MOM_do_template tool_change_return_home_Z
+
+      MOM_force Once Text G_motion X
+      MOM_do_template tool_change_return_home_X
+
+      MOM_force Once Text G_motion Y
+      MOM_do_template tool_change_return_home_Y
+      MOM_force Once Text G_motion fourth_axis
+      MOM_do_template tool_change_return_home_AC
+
+   }
+
+   PB_CMD_output_comment ";(start of Path)"
+
+   # _camtolerance from CAM (intol + outtol) with a leading zero (0.06, not .06)
+   if { [info exists mom_inside_outside_tolerances(0)] && [info exists mom_inside_outside_tolerances(1)] } {
+      set cam_tolerance_total [expr {double($mom_inside_outside_tolerances(0)) + double($mom_inside_outside_tolerances(1))}]
+      MOM_output_literal "_camtolerance=[PB_CMD__format_cam_tolerance $cam_tolerance_total]"
+   }
+
+   PB_CMD_output_comment "; "
+
+   PB_CMD_output_operation_comment
+
+   PB_CMD_output_comment "; "
+   PB_CMD_start_of_operation_force_addresses
 }
 
 
@@ -8882,30 +9629,30 @@ proc PB_CMD_output_start_path { } {
   global mom_inside_outside_tolerances
   global mom_stock_part
 
-  MOM_output_literal ";"
+  PB_CMD_output_comment ";"
 
   if {[info exists mom_oper_method]} {
-     MOM_output_literal ";TECHNOLOGY: $mom_oper_method"
+     PB_CMD_output_comment ";TECHNOLOGY: $mom_oper_method"
   }
 
   if {[info exists mom_tool_name]} {
-     MOM_output_literal ";TOOL NAME : $mom_tool_name"
+     PB_CMD_output_comment ";TOOL NAME : $mom_tool_name"
   }
 
   if {[info exists mom_tool_type]} {
-     MOM_output_literal ";TOOL TYPE : $mom_tool_type"
+     PB_CMD_output_comment ";TOOL TYPE : $mom_tool_type"
   }
 
   if {[info exists mom_tool_diameter]} {
-     MOM_output_literal ";TOOL DIAMETER     : [format "%.6f" $mom_tool_diameter]"
+     PB_CMD_output_comment ";TOOL DIAMETER     : [format "%.6f" $mom_tool_diameter]"
   }
 
   if {[info exists mom_tool_length]} {
-     MOM_output_literal ";TOOL LENGTH       : [format "%.6f" $mom_tool_length]"
+     PB_CMD_output_comment ";TOOL LENGTH       : [format "%.6f" $mom_tool_length]"
   }
 
   if {[info exists mom_tool_corner1_radius]} {
-     MOM_output_literal ";TOOL CORNER RADIUS: [format "%.6f" $mom_tool_corner1_radius]"
+     PB_CMD_output_comment ";TOOL CORNER RADIUS: [format "%.6f" $mom_tool_corner1_radius]"
   }
 
   if {[info exists mom_inside_outside_tolerances] && [info exists mom_stock_part]} {
@@ -8914,10 +9661,10 @@ proc PB_CMD_output_start_path { } {
      set outtol [format "%.6f" $mom_inside_outside_tolerances(1)]
      set stock [format "%.6f" $mom_stock_part]
 
-     MOM_output_literal ";"
-     MOM_output_literal ";Intol     : $intol"
-     MOM_output_literal ";Outtol    : $outtol"
-     MOM_output_literal ";Stock     : $stock"
+     PB_CMD_output_comment ";"
+     PB_CMD_output_comment ";Intol     : $intol"
+     PB_CMD_output_comment ";Outtol    : $outtol"
+     PB_CMD_output_comment ";Stock     : $stock"
   }
 
 }
@@ -8932,30 +9679,17 @@ proc PB_CMD_output_start_program { } {
   global mom_part_name
   global mom_definition_file_name
   global start_output_flag
-  global mom_sys_leader
-  global mom_kin_machine_type
 
   if { ![info exists start_output_flag] || $start_output_flag == 0 } {
      set start_output_flag 1
-     MOM_output_literal ";Start of Program"
+     PB_CMD_output_comment ";(Start of Program)"
     # MOM_output_literal ";"
     # MOM_output_literal ";PART NAME   :$mom_part_name"
     # MOM_output_literal ";DATE TIME   :$mom_date"
-     MOM_output_literal ";"
+     PB_CMD_output_comment ";"
      MOM_output_literal "DEF REAL _camtolerance"
-     set fourth_home ""
-     set fifth_home ""
-     if {[string compare "3_axis_mill" $mom_kin_machine_type]} {
-        set mom_sys_leader(fourth_axis_home) "_[set mom_sys_leader(fourth_axis)]_HOME"
-        set fourth_home ", $mom_sys_leader(fourth_axis_home)"
-        if {[string match "5_axis*" $mom_kin_machine_type]} {
-           set mom_sys_leader(fifth_axis_home) "_[set mom_sys_leader(fifth_axis)]_HOME"
-           set fifth_home ", $mom_sys_leader(fifth_axis_home)"
-        }
-     }
-     MOM_output_literal "DEF REAL _X_HOME, _Y_HOME, _Z_HOME$fourth_home$fifth_home"
-     MOM_output_literal "DEF REAL _F_CUTTING, _F_ENGAGE, _F_RETRACT"
-     MOM_output_literal ";"
+    # MOM_output_literal "DEF REAL _F_CUTTING, _F_ENGAGE, _F_RETRACT"
+     PB_CMD_output_comment ";"
      MOM_force Once G_cutcom G_plane G F_control G_stopping G_feed G_unit G_mode
      MOM_do_template start_of_program
   }
@@ -9918,7 +10652,7 @@ proc PB_CMD_set_Sinumerik_default_setting { } {
 
   # To set default coordinate rotation output mode for 3+2 operations.
   global dpp_coord_rotation_output_type
-  set dpp_coord_rotation_output_type "TRAORI" ; # SWIVELING / TRAORI (+AROT)
+  set dpp_coord_rotation_output_type "SWIVELING" ; # SWIVELING / TRAORI (+AROT)
 
   global sinumerik_version
 
@@ -10883,8 +11617,14 @@ return
       #set output mode
       if {$dpp_ge(current_output_mode) == "5axis"} {
 
-         MOM_output_literal "TRAORI"
-         set mom_siemens_5axis_output_mode 1
+         global mom_ude_interpolation_lock
+         if { [info exists mom_ude_interpolation_lock] && $mom_ude_interpolation_lock == "Yes" } {
+            # Rotation table mode (interpolation_lock): no TRAORI needed
+            set mom_siemens_5axis_output_mode 0
+         } else {
+            MOM_output_literal "TRAORI"
+            set mom_siemens_5axis_output_mode 1
+         }
 
       } elseif {$dpp_ge(current_output_mode) == "3plus2"} {
 
@@ -11909,6 +12649,7 @@ proc DPP_GE_COOR_ROT { ang_mode rot_angle offset pos } {
       set angle(1) 0.0
       set angle(2) 0.0
    }
+
    return $coord_rot
 }
 
@@ -15191,9 +15932,8 @@ return "error"
    if { ![info exists mom_sys_lock_arc_save] } {
       set mom_sys_lock_arc_save $mom_kin_arc_output_mode
    }
-
-   set mom_kin_arc_output_mode "LINEAR"
-   MOM_reload_kinematics
+   # Keep arcs circular (do NOT force LINEAR), so approach/retract arcs are
+   # output as G2/G3 and the working circle is converted to C-axis rotation.
 
 return "ON"
 }
@@ -15758,7 +16498,7 @@ proc PB_DEFINE_MACROS { } {
    set mom_pb_macro_arr(CYCLE832_v7) \
        [list {CYCLE832 ( , ) 0 {}} \
         {{_camtolerance 0} \
-         {{$cycle832_tolm} 1 0 6 0 0 6} \
+         {{$cycle832_tolm} 0} \
          {{$cycle832_v832} 0}}]
 
    set mom_pb_macro_arr(MCALL) \
