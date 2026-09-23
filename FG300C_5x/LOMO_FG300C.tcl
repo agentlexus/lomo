@@ -503,8 +503,6 @@ proc MOM_end_of_program { } {
 
   # Write tool list with time in commentary data
    LIST_FILE_TRAILER
-   global mom_machine_time mom_cutting_time mom_sys_machine_time
-   MOM_output_to_listing_device "DBG endprog: mt=$mom_machine_time cut=$mom_cutting_time sys_mt=$mom_sys_machine_time"
 
   # Close warning and listing files
    CLOSE_files
@@ -1609,7 +1607,6 @@ proc MOM_end_of_path { } {
    set mom_machine_time [expr $mom_machine_time + $mom_sys_add_cutting_time + $mom_sys_add_non_cutting_time]
    MOM_reload_variable mom_cutting_time
    MOM_reload_variable mom_machine_time
-   MOM_output_to_listing_device "DBG endpath: mt=$mom_machine_time cut=$mom_cutting_time add_cut=$mom_sys_add_cutting_time add_non=$mom_sys_add_non_cutting_time"
 
    if [CMD_EXIST PB_CMD_kin_end_of_path] {
       PB_CMD_kin_end_of_path
@@ -7533,10 +7530,6 @@ return
   # used in the expression of an Address need to be set accordingly
   # before "MOM_do_template" is called.
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   global mom_machine_time mom_sys_tool_time
-   set __ttex 0
-   if { [info exists mom_sys_tool_time] } { set __ttex 1 }
-   MOM_output_to_listing_device "DBG toolbody: tool=$mom_tool_name mt=$mom_machine_time tool_time=$__ttex"
    set tool_data_buffer($mom_tool_name,number) $mom_tool_number
    set tool_data_buffer($mom_tool_name,name)   $mom_tool_name
    set tool_data_buffer($mom_tool_name,dia)    $mom_tool_diameter
@@ -9572,16 +9565,6 @@ proc PB_CMD_output_program_header { } {
    }
    PB_CMD_output_comment ";(NC name:$ncname)"
 
-   # Machine time (minutes, one digit)
-   if {[info exists mom_machine_time] && $mom_machine_time != ""} {
-      set mtime [format "%.1f" $mom_machine_time]
-      PB_CMD_output_comment ";(Machine time: $mtime MIN)"
-   }
-   if { [info exists mom_sys_tool_time] } {
-      MOM_output_to_listing_device "DBG hdr: mt=$mom_machine_time tool_time=EXISTS"
-   } else {
-      MOM_output_to_listing_device "DBG hdr: mt=$mom_machine_time tool_time=MISSING"
-   }
 }
 
 
