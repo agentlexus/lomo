@@ -5626,6 +5626,18 @@ proc PB_CMD_config_cycle_start { } {
 
 
 #=============================================================
+#=============================================================
+proc PB_CMD__fmt_toolval { value } {
+#=============================================================
+# Format a tool dimension the way the reference header shows it:
+# trailing zeros stripped, a trailing dot kept for whole numbers
+# (16. , 0. , -6. , 16.5).
+   set text [format "%.3f" $value]
+   regsub -all {0+$} $text "" text
+   return $text
+}
+
+
 proc PB_CMD_creat_tool_list_2 { } {
 #=============================================================
 #  Place this custom command in either the start of program
@@ -5785,21 +5797,18 @@ return
 
       set tool_type $tool_data_buffer($tool,type)
 
-      if [info exists tool_data_buffer($tool,output)] {
-         set tool_line $tool_data_buffer($tool,output)
-
-         # Parse all tool fields
-         # Format: NUMBER  NAME  DIAMETER  COR_RAD  FLUTE_LEN  ADJ_REG
-         if { [regexp {^([^\s]+)\s+([^\s]+)\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)} $tool_line match number name dia rad flute adj] } {
-            incr tool_count
-            if { $tool_list_output != "" } {
-               append tool_list_output "\n"
-            }
-            # Format as in your example
-            append tool_list_output ";(T${number}=${name} D=${dia} DR_angle=${rad} H${adj} D00)"
+      if { [info exists tool_data_buffer($tool,number)] } {
+         set tnum $tool_data_buffer($tool,number)
+         set tname $tool_data_buffer($tool,name)
+         set tdia  $tool_data_buffer($tool,dia)
+         set trad  $tool_data_buffer($tool,rad)
+         set tadj  $tool_data_buffer($tool,adj)
+         incr tool_count
+         if { $tool_list_output != "" } {
+            append tool_list_output "\n"
          }
+         append tool_list_output ";(T${tnum}=${tname} D=[PB_CMD__fmt_toolval $tdia] R=[PB_CMD__fmt_toolval $trad] H[format %02d $tadj] D00)"
       }
-
       set prev_tool_type $tool_type
    }
 
@@ -7521,6 +7530,12 @@ return
   # used in the expression of an Address need to be set accordingly
   # before "MOM_do_template" is called.
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   set tool_data_buffer($mom_tool_name,number) $mom_tool_number
+   set tool_data_buffer($mom_tool_name,name)   $mom_tool_name
+   set tool_data_buffer($mom_tool_name,dia)    $mom_tool_diameter
+   set tool_data_buffer($mom_tool_name,rad)    $mom_tool_corner1_radius
+   set tool_data_buffer($mom_tool_name,adj)    $mom_tool_length_adjust_register
+
    set tool_data_buffer($mom_tool_name,output) "$co$output$tool_time$ci"
    set tool_data_buffer($mom_tool_name,type)   "$tool_type"
 }
@@ -7640,7 +7655,13 @@ proc MOM_PROGRAM_BODY {} {
 
 
 proc MOM_SETUP_BODY {} {}
-proc MOM_OPER_BODY  {} {}
+proc MOM_OPER_BODY  {} {
+   global mom_machine_time pb_program_time
+   if { ![info exists pb_program_time] } { set pb_program_time 0.0 }
+   if { [info exists mom_machine_time] && $mom_machine_time != "" } {
+      set pb_program_time [expr $pb_program_time + $mom_machine_time]
+   }
+}
 proc MOM_TOOL_HDR   {} {}
 proc MOM_TOOL_FTR   {} {}
 proc MOM_PROGRAMVIEW_FTR {} {}
@@ -9550,11 +9571,17 @@ proc PB_CMD_output_program_header { } {
    }
    PB_CMD_output_comment ";(NC name:$ncname)"
 
-   # Machine time (minutes, one digit)
-   if {[info exists mom_machine_time] && $mom_machine_time != ""} {
-      set mtime [format "%.1f" $mom_machine_time]
-      PB_CMD_output_comment ";(Machine time: $mtime MIN)"
+   # Machine time (minutes, two digits). The total is accumulated by
+   # MOM_OPER_BODY while cycling the operation objects of the object model.
+   global pb_program_time
+   if { ![info exists pb_program_time] } {
+      set pb_program_time 0.0
+      if [llength [info commands MOM_cycle_objects]] {
+         MOM_cycle_objects {SETUP {PROGRAMVIEW {MEMBERS {OPERATION}}}}
+      }
    }
+   set mtime [format "%.2f" $pb_program_time]
+   PB_CMD_output_comment ";(Machine time: $mtime MIN)"
 }
 
 
