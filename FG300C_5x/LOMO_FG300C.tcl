@@ -1812,17 +1812,6 @@ proc MOM_initial_move { } {
    PB_CMD_detect_operation_type
    PB_CMD_output_initial_move
 
-  global mom_programmed_feed_rate
-   if { [EQ_is_equal $mom_programmed_feed_rate 0] } {
-      MOM_rapid_move
-   } else {
-      MOM_linear_move
-   }
-
-  # Configure turbo output settings
-   if { [CMD_EXIST CONFIG_TURBO_OUTPUT] } {
-      CONFIG_TURBO_OUTPUT
-   }
 }
 
 
