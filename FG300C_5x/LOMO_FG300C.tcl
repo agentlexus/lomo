@@ -3474,22 +3474,6 @@ proc PB_CMD__check_block_CYCLE832 { } {
       set mom_siemens_method "DESELECTION"
    }
 
-   # DBG (temporary): reveal the CYCLE832 method source
-   global mom_oper_method
-   set __dbg "libref="
-   if {[info exists mom_cutmthd_libref]} { append __dbg $mom_cutmthd_libref } else { append __dbg "<none>" }
-   append __dbg " oper_method="
-   if {[info exists mom_oper_method]} { append __dbg $mom_oper_method } else { append __dbg "<none>" }
-   append __dbg " op_type=$mom_operation_type method=$mom_siemens_method ver=$sinumerik_version"
-   PB_CMD_output_comment ";(DBG-CYCLE832 $__dbg)"
-   foreach __g [uplevel #0 [list info globals mom_*]] {
-      if { [string match "*ethod*" $__g] || [string match "*mthd*" $__g] } {
-         if { ![uplevel #0 [list array exists $__g]] && [uplevel #0 [list info exists $__g]] } {
-            PB_CMD_output_comment ";(DBG-MTHD $__g=[uplevel #0 [list set $__g]])"
-         }
-      }
-   }
-
    # <lili 2013-06-20> Enhancement for new drilling cycle operation type.
    # Output cycle832 for milling operation.
    if {[string compare "Point to Point" $mom_operation_type] && \
@@ -3553,13 +3537,8 @@ proc PB_CMD__check_block_CYCLE832 { } {
 
             set cycle832_v832 "1"
 
-            switch -- $mom_siemens_method {
-
-               "ROUGHING"        {set cycle832_tolm "_ROUGH"}
-               "ROUGH-FINISHING" {set cycle832_tolm "_SEMIFIN"}
-               "FINISHING"       {set cycle832_tolm "_FINISH"}
-               default           {set cycle832_tolm "_OFF"}
-            }
+            # Hardcoded: always finishing (per customer requirement).
+            set cycle832_tolm "_FINISH"
 
             if {![string compare "V7" $sinumerik_version] } {
                PB_CMD_check_settings_for_cycle832
