@@ -9611,11 +9611,8 @@ proc PB_CMD_output_start_of_path { } {
 
    PB_CMD_output_comment ";(start of Path)"
 
-   # _camtolerance from CAM (intol + outtol) with a leading zero (0.06, not .06)
-   if { [info exists mom_inside_outside_tolerances(0)] && [info exists mom_inside_outside_tolerances(1)] } {
-      set cam_tolerance_total [expr {double($mom_inside_outside_tolerances(0)) + double($mom_inside_outside_tolerances(1))}]
-      MOM_output_literal "_camtolerance=[PB_CMD__format_cam_tolerance $cam_tolerance_total]"
-   }
+   # _camtolerance hardcoded (per customer requirement).
+   MOM_output_literal "_camtolerance=0.002"
 
    PB_CMD_output_comment "; "
 
