@@ -12784,6 +12784,10 @@ proc DPP_GE_COOR_ROT_AUTO3D { rot_matrix rot_pos } {
    if { $ang_pos(0) > 0.0 } {
       set pos_rot0 [expr $rot0 - 180.0*$DEG2RAD]
       set pos_rot1 [expr $rot1 - 180.0*$DEG2RAD]
+      # Reload the rotary solution so subsequent moves use the lower branch too.
+      set mom_out_angle_pos(0) [expr $ang_pos(0) - 180.0]
+      set mom_out_angle_pos(1) [expr $ang_pos(1) - 180.0]
+      MOM_reload_variable -a mom_out_angle_pos
    }
 
    VECTOR_ROTATE mom_kin_5th_axis_vector [expr $rot_dir_5th*$pos_rot1] mom_mcs_goto V
