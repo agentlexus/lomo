@@ -3389,13 +3389,6 @@ proc PB_CMD__check_block_CYCLE800 { } {
         set cycle800_dir -1 ;# Hardcoded: lower rotary solution (per reference)
         set cycle800_st 0
         set cycle800_mode 57
-        # Canonical Z-rotation of the swivel (3rd CYCLE800 angle) - per reference.
-        if { $coord_angle(0) > 0.0 } {
-           if { $coord_angle(1) > 0.0 } { set coord_angle(2) -180.0 } else { set coord_angle(2) 180.0 }
-        } else {
-           set coord_angle(2) 0.0
-        }
-        set coord_ang_C $coord_angle(2)
 
         MOM_do_template rotation_axes CREATE
  return 1
@@ -12461,6 +12454,12 @@ proc DPP_GE_CALCULATE_COOR_ROT_ANGLE { mode MATRIX ANG } {
       set C [expr -atan2($sin_c,$cos_c)*$RAD2DEG]
 
       set rot_ang(0) $A; set rot_ang(1) $B; set rot_ang(2) $C
+      # Canonical Z-rotation (3rd CYCLE800 angle) - per reference.
+      if { $rot_ang(0) > 0.0 } {
+         if { $rot_ang(1) > 0.0 } { set rot_ang(2) -180.0 } else { set rot_ang(2) 180.0 }
+      } else {
+         set rot_ang(2) 0.0
+      }
       set status OK
 
    } elseif { $mode == "ZXY" } {
