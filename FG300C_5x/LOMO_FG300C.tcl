@@ -3389,15 +3389,13 @@ proc PB_CMD__check_block_CYCLE800 { } {
         set cycle800_dir -1 ;# Hardcoded: lower rotary solution (per reference)
         set cycle800_st 0
         set cycle800_mode 57
-        set __p {}
-        foreach __v {mom_operation_name mom_siemens_coord_rotation mom_siemens_5axis_mode dpp_ge(current_output_mode) dpp_ge(prev_output_mode) cycle800_dir mom_rotary_direction_4th mom_rotary_direction_5th mom_prev_rot_ang_4th mom_prev_rot_ang_5th coord_ang_A coord_ang_B coord_ang_C coord_angle(0) coord_angle(1) coord_angle(2) mom_out_angle_pos(0) mom_out_angle_pos(1) mom_pos(3) mom_pos(4) mom_alt_pos(3) mom_alt_pos(4) mom_result1} {
-            if { [uplevel #0 [list info exists $__v]] } {
-               lappend __p "$__v=[uplevel #0 [list set $__v]]"
-            } else {
-               lappend __p "$__v=<none>"
-            }
-         }
-         PB_CMD_output_comment ";(DBG-CYCLE800 [join $__p { }])"
+        # Canonical Z-rotation of the swivel (3rd CYCLE800 angle) - per reference.
+        if { $coord_angle(0) > 0.0 } {
+           if { $coord_angle(1) > 0.0 } { set coord_angle(2) -180.0 } else { set coord_angle(2) 180.0 }
+        } else {
+           set coord_angle(2) 0.0
+        }
+        set coord_ang_C $coord_angle(2)
 
         MOM_do_template rotation_axes CREATE
  return 1
