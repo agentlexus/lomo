@@ -3386,7 +3386,7 @@ proc PB_CMD__check_block_CYCLE800 { } {
          set mom_siemens_coord_rotation 0
       }
       if {$mom_siemens_coord_rotation !=0 && [info exists mom_siemens_5axis_mode] && [string match "SWIVELING" $mom_siemens_5axis_mode] } {
-        set cycle800_dir $mom_rotary_direction_4th
+        set cycle800_dir -1 ;# Hardcoded: lower rotary solution (per reference)
         set cycle800_st 0
         set cycle800_mode 57
 
