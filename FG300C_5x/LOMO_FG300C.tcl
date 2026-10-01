@@ -5362,6 +5362,28 @@ proc PB_CMD_before_motion { } {
 
       PB_CMD_switch_output_mode_in_operation
   }
+
+   # Mirrored *_COPY operations (lower rotary solution): flip X/Y and arc I/J.
+   global pb_lower_solution
+   if { [info exists pb_lower_solution] && $pb_lower_solution == 1 } {
+      global mom_pos mom_prev_pos mom_pos_arc_center mom_arc_center
+      if { [info exists mom_pos(0)] } {
+         set mom_pos(0) [expr -1.0 * $mom_pos(0)]
+         set mom_pos(1) [expr -1.0 * $mom_pos(1)]
+      }
+      if { [info exists mom_prev_pos(0)] } {
+         set mom_prev_pos(0) [expr -1.0 * $mom_prev_pos(0)]
+         set mom_prev_pos(1) [expr -1.0 * $mom_prev_pos(1)]
+      }
+      if { [info exists mom_pos_arc_center(0)] } {
+         set mom_pos_arc_center(0) [expr -1.0 * $mom_pos_arc_center(0)]
+         set mom_pos_arc_center(1) [expr -1.0 * $mom_pos_arc_center(1)]
+      }
+      if { [info exists mom_arc_center(0)] } {
+         set mom_arc_center(0) [expr -1.0 * $mom_arc_center(0)]
+         set mom_arc_center(1) [expr -1.0 * $mom_arc_center(1)]
+      }
+   }
 }
 
 
@@ -12649,6 +12671,9 @@ proc DPP_GE_COOR_ROT { ang_mode rot_angle offset pos } {
    set v0 0
    VEC3_init v0 v0 v0 coord_offset
 
+   global pb_lower_solution
+   set pb_lower_solution 0
+
    if {[DPP_GE_COOR_ROT_LOCAL rot_matrix coord_offset]} {
       set coord_rot "LOCAL"
    } elseif {[DPP_GE_COOR_ROT_AUTO3D rot_matrix rot_pos]} {
@@ -12777,21 +12802,17 @@ proc DPP_GE_COOR_ROT_AUTO3D { rot_matrix rot_pos } {
    }
 
 
-   # Select the lower rotary solution (cycle800_dir=-1) for the linear position only.
-   # The CYCLE800 rotation matrix below keeps the primary solution.
-   set pos_rot0 $rot0
-   set pos_rot1 $rot1
+   # Flag the lower rotary solution (cycle800_dir=-1) so PB_CMD_before_motion
+   # flips the mirrored *_COPY coordinates (X/Y and arc I/J).
+   global pb_lower_solution
    if { $ang_pos(0) > 0.0 } {
-      set pos_rot0 [expr $rot0 - 180.0*$DEG2RAD]
-      set pos_rot1 [expr $rot1 - 180.0*$DEG2RAD]
-      # Reload the rotary solution so subsequent moves use the lower branch too.
-      set mom_out_angle_pos(0) [expr $ang_pos(0) - 180.0]
-      set mom_out_angle_pos(1) [expr $ang_pos(1) - 180.0]
-      MOM_reload_variable -a mom_out_angle_pos
+      set pb_lower_solution 1
+   } else {
+      set pb_lower_solution 0
    }
 
-   VECTOR_ROTATE mom_kin_5th_axis_vector [expr $rot_dir_5th*$pos_rot1] mom_mcs_goto V
-   VECTOR_ROTATE mom_kin_4th_axis_vector [expr $rot_dir_4th*$pos_rot0] V pos
+   VECTOR_ROTATE mom_kin_5th_axis_vector [expr $rot_dir_5th*$rot1] mom_mcs_goto V
+   VECTOR_ROTATE mom_kin_4th_axis_vector [expr $rot_dir_4th*$rot0] V pos
 
    if { [info exists mom_tool_z_offset] && [info exists mom_spindle_axis] } {
       set tool_tip_scale [expr -1*$mom_tool_z_offset]
