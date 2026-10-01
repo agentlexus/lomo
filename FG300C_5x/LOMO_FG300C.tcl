@@ -3389,15 +3389,6 @@ proc PB_CMD__check_block_CYCLE800 { } {
         set cycle800_dir -1 ;# Hardcoded: lower rotary solution (per reference)
         set cycle800_st 0
         set cycle800_mode 57
-        set __p {}
-        foreach __v {mom_operation_name mom_siemens_coord_rotation mom_siemens_5axis_mode dpp_ge(current_output_mode) dpp_ge(prev_output_mode) dpp_ge(coord_rot) cycle800_dir mom_rotary_direction_4th mom_rotary_direction_5th mom_prev_rot_ang_4th mom_prev_rot_ang_5th mom_kin_4th_axis_direction mom_kin_5th_axis_direction mom_kin_4th_axis_rotation mom_kin_5th_axis_rotation mom_kin_4th_axis_zero mom_kin_5th_axis_zero coord_ang_A coord_ang_B coord_ang_C coord_angle(0) coord_angle(1) coord_angle(2) mom_out_angle_pos(0) mom_out_angle_pos(1) mom_alt_pos(3) mom_alt_pos(4) mom_pos(0) mom_pos(1) mom_pos(2) mom_pos(3) mom_pos(4) mom_mcs_goto(0) mom_mcs_goto(1) mom_mcs_goto(2) mom_kin_4th_axis_vector(0) mom_kin_4th_axis_vector(1) mom_kin_4th_axis_vector(2) mom_kin_5th_axis_vector(0) mom_kin_5th_axis_vector(1) mom_kin_5th_axis_vector(2) mom_result1 rot_angle(0) rot_angle(1) rot_alt_angle(0) rot_alt_angle(1)} {
-            if { [uplevel #0 [list info exists $__v]] } {
-               lappend __p "$__v=[uplevel #0 [list set $__v]]"
-            } else {
-               lappend __p "$__v=<none>"
-            }
-         }
-         PB_CMD_output_comment ";(DBG-CYCLE800 [join $__p { }])"
 
         MOM_do_template rotation_axes CREATE
  return 1
@@ -12786,8 +12777,17 @@ proc DPP_GE_COOR_ROT_AUTO3D { rot_matrix rot_pos } {
    }
 
 
-   VECTOR_ROTATE mom_kin_5th_axis_vector [expr $rot_dir_5th*$rot1] mom_mcs_goto V
-   VECTOR_ROTATE mom_kin_4th_axis_vector [expr $rot_dir_4th*$rot0] V pos
+   # Select the lower rotary solution (cycle800_dir=-1) for the linear position only.
+   # The CYCLE800 rotation matrix below keeps the primary solution.
+   set pos_rot0 $rot0
+   set pos_rot1 $rot1
+   if { $ang_pos(0) > 0.0 } {
+      set pos_rot0 [expr $rot0 - 180.0*$DEG2RAD]
+      set pos_rot1 [expr $rot1 - 180.0*$DEG2RAD]
+   }
+
+   VECTOR_ROTATE mom_kin_5th_axis_vector [expr $rot_dir_5th*$pos_rot1] mom_mcs_goto V
+   VECTOR_ROTATE mom_kin_4th_axis_vector [expr $rot_dir_4th*$pos_rot0] V pos
 
    if { [info exists mom_tool_z_offset] && [info exists mom_spindle_axis] } {
       set tool_tip_scale [expr -1*$mom_tool_z_offset]
