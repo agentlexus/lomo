@@ -154,7 +154,8 @@ MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
   форсится (`MOM_force Once Text G_motion ...`), `C0.0` из `SUPA` убран.
 - `MOM_first_move` повторяет цепочку `PB_CMD_output_initial_move`; `ORIRESET` и
   `CYCLE800(...)` выводятся только когда их требует операция (для планарной — нет).
-- D-номер коррекции — `D[$mom_tool_adjust_register]`.
+- D-номер коррекции в координатах — `D[$mom_tool_adjust_register]`; в вызове
+  инструмента (`T… D`) — хардкод `D1`.
 
 ## Как добавить новое UDE-событие
 
@@ -246,6 +247,11 @@ MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
   `PB_CMD_before_motion` (`(X, Y, I, J) → (-X, -Y, -I, -J)`); матрица `CYCLE800`
   остаётся на исходной ветви. Перезагрузка `mom_out_angle_pos` не помогла:
   NX заранее считает `mom_pos` для всех ходов и не пересчитывает их.
+
+- 2026-10-02: регистр `D` в вызове инструмента (`T… D`) захардкожен на `D1`
+  (в `PB_auto_tool_change` и `PB_CMD_output_first_tool`, через
+  `set mom_tool_adjust_register 1` с сохранением/восстановлением). Координаты
+  (`G0 … D`) не тронуты — там остаётся `mom_tool_adjust_register` (`D2`).
 
 ## Зеркальные координаты операций `*_COPY` (причина и решение)
 
