@@ -12811,8 +12811,17 @@ proc DPP_GE_COOR_ROT_AUTO3D { rot_matrix rot_pos } {
       set pb_lower_solution 0
    }
 
-   VECTOR_ROTATE mom_kin_5th_axis_vector [expr $rot_dir_5th*$rot1] mom_mcs_goto V
-   VECTOR_ROTATE mom_kin_4th_axis_vector [expr $rot_dir_4th*$rot0] V pos
+   # The first move position must also use the lower solution (PB_CMD_before_motion
+   # does not run before the initial/first move).
+   set pos_rot0 $rot0
+   set pos_rot1 $rot1
+   if { $ang_pos(0) > 0.0 } {
+      set pos_rot0 [expr $rot0 - 180.0*$DEG2RAD]
+      set pos_rot1 [expr $rot1 - 180.0*$DEG2RAD]
+   }
+
+   VECTOR_ROTATE mom_kin_5th_axis_vector [expr $rot_dir_5th*$pos_rot1] mom_mcs_goto V
+   VECTOR_ROTATE mom_kin_4th_axis_vector [expr $rot_dir_4th*$pos_rot0] V pos
 
    if { [info exists mom_tool_z_offset] && [info exists mom_spindle_axis] } {
       set tool_tip_scale [expr -1*$mom_tool_z_offset]
