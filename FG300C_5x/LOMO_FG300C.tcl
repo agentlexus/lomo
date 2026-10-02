@@ -2526,7 +2526,11 @@ proc PB_auto_tool_change { } {
    MOM_do_template stop
 
    MOM_force Once T
+   global mom_tool_adjust_register
+   set _save_adjust $mom_tool_adjust_register
+   set mom_tool_adjust_register 1 ;# Hardcoded tool edge D1
    MOM_do_template tool_change
+   set mom_tool_adjust_register $_save_adjust
 
    MOM_force Once M
    MOM_do_template tool_change_1
@@ -9356,7 +9360,11 @@ proc PB_CMD_output_first_tool { } {
    MOM_do_template stop
 
    MOM_force Once T
+   global mom_tool_adjust_register
+   set _save_adjust $mom_tool_adjust_register
+   set mom_tool_adjust_register 1 ;# Hardcoded tool edge D1
    MOM_do_template tool_change
+   set mom_tool_adjust_register $_save_adjust
 
    MOM_force Once M
    MOM_do_template tool_change_1
