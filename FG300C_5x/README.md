@@ -29,6 +29,7 @@ Post Builder), `.cdl` (объявления UDE), `LOMO_FG300C_ude.cdl` (кас�
 | `LOMO_FG300C.pui` | Проект Post Builder: UDE→обработчик, Custom Command |
 | `LOMO_FG300C.cdl` | Объявления UDE для Post Builder |
 | `LOMO_FG300C_ude.cdl` | Источник блока кастомного события; деплой — вставка блока в `...\user_def_event\ude.cdl` (`working_script/deploy_ude.py`) |
+| `working_script/deploy_post.py` | Деплой `.tcl/.def/.pui/.cdl` в папку поста `...\postprocessor\LOMO_FG300C\` (байтовое копирование + бэкап, `--check`) |
 | `lock_axis_plan.md` | История работ по лок-режиму (разделы 1–10 — предыстория, раздел 11 — актуально) |
 | `working_script/*.py` | Патч-скрипты правок поста (байтовые, с assert) |
 | `nc/*.mpf`, `raw.cls` | Тестовые УП и CLS для сверки с эталоном |
@@ -81,8 +82,9 @@ proc MOM_Interpolation_lock { } {
    (`MACHINE FANUC` + `INCLUDE {.../LOMO_FG300C.cdl}`). На этой сборке оба
    варианта не проверялись.
 6. Деплой: `.tcl`/`.def` (и `.pui`/`.cdl` — для Post Builder) →
-   `...\postprocessor\LOMO_FG300C\`; блок кастомного события → `ude.cdl`
-   (`working_script/deploy_ude.py`).
+   `...\postprocessor\LOMO_FG300C\` — `working_script/deploy_post.py` (байтовое
+   копирование + бэкап, `--check` для сверки); блок кастомного события →
+   `ude.cdl` — `working_script/deploy_ude.py`.
 
 ## Событие Interpolation_lock (вращение стола C)
 
@@ -108,8 +110,9 @@ proc MOM_Interpolation_lock { } {
 
 В лок-режиме выводится: `M52 ;(C-axis loose)` + `;INTERPOLATION LOCK. 4-AXIS
 MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
-`ASCALE X=R1 Y=R1`, а рабочий контур вокруг центра стола — одним кадром
-`G1 G91 C-360.1 F200` + `G90`; дуги подхода/отхода остаются `G2/G3`.
+`ASCALE X=R1 Y=R1`, а рабочий контур вокруг центра стола — кадром
+`G1 G95 C=IC(±360.1) F0.03`, ниже `G94`; подача следующего кадра (дуга отхода)
+выводится принудительно (`MOM_force Once F`). Дуги подхода/отхода остаются `G2/G3`.
 
 Инварианты (не нарушать):
 - `R1`/`ASCALE` — только при включённом событии;
@@ -252,6 +255,10 @@ MACHINING (TABLE C ROTATION).`, `TRAFOOF`, `R1=<ASCALE_value>` и
   (в `PB_auto_tool_change` и `PB_CMD_output_first_tool`, через
   `set mom_tool_adjust_register 1` с сохранением/восстановлением). Координаты
   (`G0 … D`) не тронуты — там остаётся `mom_tool_adjust_register` (`D2`).
+
+- 2026-10-09: поворот стола C в лок-режиме переведён на подачу на оборот:
+  кадр `G1 G95 C=IC(±360.1) F0.03`, ниже `G94`; подача следующего кадра (дуга
+  отхода) выводится принудительно (`MOM_force Once F` в `PB_CMD__rotc_turn_block`).
 
 ## Зеркальные координаты операций `*_COPY` (причина и решение)
 

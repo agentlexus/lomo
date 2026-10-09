@@ -1110,7 +1110,9 @@ proc PB_CMD__rotc_turn_block { } {
    global pb_lock_turn_sign
    if { ![info exists pb_lock_turn_sign] } { set pb_lock_turn_sign -1 }
    set angle [format "%.1f" [expr $pb_lock_turn_sign * 360.1]]
-   MOM_output_literal "G1 C=IC($angle) F200"
+   MOM_output_literal "G1 G95 C=IC($angle) F0.03"
+   MOM_output_literal "G94"
+   MOM_force Once F
 }
 
 proc PB_CMD__rotc_arc_handle { } {
